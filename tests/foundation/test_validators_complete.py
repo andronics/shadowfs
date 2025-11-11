@@ -2,29 +2,30 @@
 """Complete test coverage for validators.py module."""
 
 import re
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
+import pytest
+
+from shadowfs.foundation.constants import ErrorCode
 from shadowfs.foundation.validators import (
     ValidationError,
-    validate_config,
-    validate_source_config,
-    validate_rule_config,
-    validate_transform_config,
-    validate_virtual_layer_config,
     validate_cache_config,
+    validate_config,
+    validate_file_size,
+    validate_glob,
+    validate_layer_name,
     validate_path,
     validate_pattern,
-    validate_layer_name,
-    validate_version,
-    validate_port,
-    validate_file_size,
     validate_permissions,
+    validate_port,
     validate_regex,
-    validate_glob,
+    validate_rule_config,
+    validate_source_config,
     validate_timeout,
+    validate_transform_config,
+    validate_version,
+    validate_virtual_layer_config,
 )
-from shadowfs.foundation.constants import ErrorCode
 
 
 class TestValidationErrorComplete:
@@ -61,10 +62,7 @@ class TestValidateConfigComplete:
 
     def test_config_invalid_source_in_list(self):
         """Test config with invalid source in list."""
-        config = {
-            "version": "1.0",
-            "sources": [{"path": "/valid"}, {"no_path": "invalid"}]
-        }
+        config = {"version": "1.0", "sources": [{"path": "/valid"}, {"no_path": "invalid"}]}
         with pytest.raises(ValidationError) as exc_info:
             validate_config(config)
         assert "source" in str(exc_info.value).lower()
@@ -80,7 +78,7 @@ class TestValidateConfigComplete:
         """Test config with invalid rule in list."""
         config = {
             "version": "1.0",
-            "rules": [{"type": "exclude", "pattern": "*.tmp"}, {"no_type": "invalid"}]
+            "rules": [{"type": "exclude", "pattern": "*.tmp"}, {"no_type": "invalid"}],
         }
         with pytest.raises(ValidationError) as exc_info:
             validate_config(config)
@@ -97,7 +95,7 @@ class TestValidateConfigComplete:
         """Test config with invalid transform in list."""
         config = {
             "version": "1.0",
-            "transforms": [{"type": "compress", "pattern": "*.txt"}, {"no_type": "invalid"}]
+            "transforms": [{"type": "compress", "pattern": "*.txt"}, {"no_type": "invalid"}],
         }
         with pytest.raises(ValidationError) as exc_info:
             validate_config(config)
@@ -114,7 +112,7 @@ class TestValidateConfigComplete:
         """Test config with invalid virtual layer in list."""
         config = {
             "version": "1.0",
-            "virtual_layers": [{"name": "valid", "type": "classifier"}, {"no_name": "invalid"}]
+            "virtual_layers": [{"name": "valid", "type": "classifier"}, {"no_name": "invalid"}],
         }
         with pytest.raises(ValidationError) as exc_info:
             validate_config(config)
@@ -124,7 +122,7 @@ class TestValidateConfigComplete:
         """Test config with invalid cache that raises exception."""
         config = {
             "version": "1.0",
-            "cache": {"enabled": "not_bool"}  # Will cause cache validation to fail
+            "cache": {"enabled": "not_bool"},  # Will cause cache validation to fail
         }
         with pytest.raises(ValidationError) as exc_info:
             validate_config(config)

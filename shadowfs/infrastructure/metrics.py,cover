@@ -1,6 +1,6 @@
   #!/usr/bin/env python3
 > """Performance metrics collection for ShadowFS.
-  
+
 > This module provides Prometheus-compatible metrics collection with:
 > - Counter metrics for operations
 > - Gauge metrics for current state
@@ -9,14 +9,14 @@
 > - Automatic metric aggregation
 > - Thread-safe operations
 > - Export in Prometheus format
-  
+
 > Example:
 >     >>> metrics = MetricsCollector()
 >     >>> metrics.increment_counter("operations_total", {"op": "read"})
 >     >>> metrics.record_duration("operation_duration", 0.123, {"op": "read"})
 >     >>> print(metrics.export_prometheus())
 > """
-  
+
 > import time
 > import threading
 > from collections import defaultdict
@@ -24,63 +24,63 @@
 > from enum import Enum
 > from typing import Dict, List, Optional, Any, Tuple
 > from shadowfs.foundation.constants import ErrorCode
-  
-  
+
+
 > class MetricType(Enum):
 >     """Types of metrics supported."""
-  
+
 >     COUNTER = "counter"      # Monotonically increasing value
 >     GAUGE = "gauge"          # Value that can go up or down
 >     HISTOGRAM = "histogram"  # Distribution of values
 >     SUMMARY = "summary"      # Statistical summary of values
-  
-  
+
+
 > @dataclass
 > class MetricValue:
 >     """Single metric value with labels."""
-  
+
 >     value: float
 >     labels: Dict[str, str] = field(default_factory=dict)
 >     timestamp: float = field(default_factory=time.time)
-  
-  
+
+
 > @dataclass
 > class Metric:
 >     """Metric definition and values."""
-  
+
 >     name: str
 >     metric_type: MetricType
 >     description: str
 >     values: List[MetricValue] = field(default_factory=list)
 >     buckets: Optional[List[float]] = None  # For histograms
-  
+
 >     def __post_init__(self):
 >         """Initialize histogram buckets if needed."""
 >         if self.metric_type == MetricType.HISTOGRAM and self.buckets is None:
               # Default buckets: 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10
 >             self.buckets = [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
-  
-  
+
+
 > class MetricsCollector:
 >     """Thread-safe metrics collector.
-  
+
 >     Collects and aggregates metrics for export in Prometheus format.
 >     Supports counters, gauges, histograms, and summaries.
 >     """
-  
+
 >     def __init__(self, namespace: str = "shadowfs"):
 >         """Initialize metrics collector.
-  
+
 >         Args:
 >             namespace: Metric namespace prefix
 >         """
 >         self.namespace = namespace
 >         self._metrics: Dict[str, Metric] = {}
 >         self._lock = threading.RLock()
-  
+
           # Initialize default metrics
 >         self._initialize_default_metrics()
-  
+
 >     def _initialize_default_metrics(self) -> None:
 >         """Initialize default ShadowFS metrics."""
           # Operation counters
@@ -92,14 +92,14 @@
 >             "errors_total",
 >             "Total number of errors"
 >         )
-  
+
           # Performance metrics
 >         self.register_histogram(
 >             "operation_duration_seconds",
 >             "Duration of filesystem operations in seconds",
 >             buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 5.0]
 >         )
-  
+
           # State gauges
 >         self.register_gauge(
 >             "cache_size_bytes",
@@ -113,10 +113,10 @@
 >             "virtual_layers",
 >             "Number of active virtual layers"
 >         )
-  
+
 >     def register_counter(self, name: str, description: str) -> None:
 >         """Register a counter metric.
-  
+
 >         Args:
 >             name: Metric name
 >             description: Metric description
@@ -128,10 +128,10 @@
 >                     metric_type=MetricType.COUNTER,
 >                     description=description
 >                 )
-  
+
 >     def register_gauge(self, name: str, description: str) -> None:
 >         """Register a gauge metric.
-  
+
 >         Args:
 >             name: Metric name
 >             description: Metric description
@@ -143,7 +143,7 @@
 >                     metric_type=MetricType.GAUGE,
 >                     description=description
 >                 )
-  
+
 >     def register_histogram(
 >         self,
 >         name: str,
@@ -151,7 +151,7 @@
 >         buckets: Optional[List[float]] = None
 >     ) -> None:
 >         """Register a histogram metric.
-  
+
 >         Args:
 >             name: Metric name
 >             description: Metric description
@@ -165,10 +165,10 @@
 >                     description=description,
 >                     buckets=buckets
 >                 )
-  
+
 >     def register_summary(self, name: str, description: str) -> None:
 >         """Register a summary metric.
-  
+
 >         Args:
 >             name: Metric name
 >             description: Metric description
@@ -180,7 +180,7 @@
 >                     metric_type=MetricType.SUMMARY,
 >                     description=description
 >                 )
-  
+
 >     def increment_counter(
 >         self,
 >         name: str,
@@ -188,7 +188,7 @@
 >         value: float = 1.0
 >     ) -> None:
 >         """Increment a counter metric.
-  
+
 >         Args:
 >             name: Metric name
 >             labels: Metric labels
@@ -196,15 +196,15 @@
 >         """
 >         if labels is None:
 >             labels = {}
-  
+
 >         with self._lock:
 >             if name not in self._metrics:
 >                 return  # Metric not registered
-  
+
 >             metric = self._metrics[name]
 >             if metric.metric_type != MetricType.COUNTER:
 >                 return  # Wrong metric type
-  
+
               # Find or create value for these labels
 >             label_key = self._serialize_labels(labels)
 >             for metric_value in metric.values:
@@ -212,10 +212,10 @@
 >                     metric_value.value += value
 >                     metric_value.timestamp = time.time()
 >                     return
-  
+
               # Create new value
 >             metric.values.append(MetricValue(value=value, labels=labels))
-  
+
 >     def set_gauge(
 >         self,
 >         name: str,
@@ -223,7 +223,7 @@
 >         labels: Optional[Dict[str, str]] = None
 >     ) -> None:
 >         """Set a gauge metric value.
-  
+
 >         Args:
 >             name: Metric name
 >             value: Gauge value
@@ -231,15 +231,15 @@
 >         """
 >         if labels is None:
 >             labels = {}
-  
+
 >         with self._lock:
 >             if name not in self._metrics:
 >                 return  # Metric not registered
-  
+
 >             metric = self._metrics[name]
 >             if metric.metric_type != MetricType.GAUGE:
 >                 return  # Wrong metric type
-  
+
               # Find or create value for these labels
 >             label_key = self._serialize_labels(labels)
 >             for metric_value in metric.values:
@@ -247,10 +247,10 @@
 >                     metric_value.value = value
 >                     metric_value.timestamp = time.time()
 >                     return
-  
+
               # Create new value
 >             metric.values.append(MetricValue(value=value, labels=labels))
-  
+
 >     def record_duration(
 >         self,
 >         name: str,
@@ -258,7 +258,7 @@
 >         labels: Optional[Dict[str, str]] = None
 >     ) -> None:
 >         """Record a duration for histogram/summary.
-  
+
 >         Args:
 >             name: Metric name
 >             duration: Duration in seconds
@@ -266,50 +266,50 @@
 >         """
 >         if labels is None:
 >             labels = {}
-  
+
 >         with self._lock:
 >             if name not in self._metrics:
 >                 return  # Metric not registered
-  
+
 >             metric = self._metrics[name]
 >             if metric.metric_type not in (MetricType.HISTOGRAM, MetricType.SUMMARY):
 >                 return  # Wrong metric type
-  
+
               # Add observation
 >             metric.values.append(MetricValue(value=duration, labels=labels))
-  
+
 >     def get_metric(self, name: str) -> Optional[Metric]:
 >         """Get a metric by name.
-  
+
 >         Args:
 >             name: Metric name
-  
+
 >         Returns:
 >             Metric or None if not found
 >         """
 >         with self._lock:
 >             return self._metrics.get(name)
-  
+
 >     def clear_metrics(self) -> None:
 >         """Clear all metric values."""
 >         with self._lock:
 >             for metric in self._metrics.values():
 >                 metric.values.clear()
-  
+
 >     def export_prometheus(self) -> str:
 >         """Export metrics in Prometheus format.
-  
+
 >         Returns:
 >             Metrics in Prometheus text format
 >         """
 >         with self._lock:
 >             lines = []
-  
+
 >             for metric in self._metrics.values():
                   # Add metric help and type
 >                 lines.append(f"# HELP {self.namespace}_{metric.name} {metric.description}")
 >                 lines.append(f"# TYPE {self.namespace}_{metric.name} {metric.metric_type.value}")
-  
+
 >                 if metric.metric_type in (MetricType.COUNTER, MetricType.GAUGE):
                       # Export simple values
 >                     for value in metric.values:
@@ -317,13 +317,13 @@
 >                         lines.append(
 >                             f"{self.namespace}_{metric.name}{label_str} {value.value}"
 >                         )
-  
+
 >                 elif metric.metric_type == MetricType.HISTOGRAM:
                       # Export histogram buckets and statistics
 >                     histogram_data = self._aggregate_histogram(metric)
 >                     for labels, buckets, count, sum_value in histogram_data:
 >                         label_str = self._format_labels(labels)
-  
+
                           # Export buckets
 >                         for bucket_limit, bucket_count in buckets:
 >                             bucket_labels = dict(labels)
@@ -332,7 +332,7 @@
 >                             lines.append(
 >                                 f"{self.namespace}_{metric.name}_bucket{bucket_label_str} {bucket_count}"
 >                             )
-  
+
                           # Export count and sum
 >                         lines.append(
 >                             f"{self.namespace}_{metric.name}_count{label_str} {count}"
@@ -340,13 +340,13 @@
 >                         lines.append(
 >                             f"{self.namespace}_{metric.name}_sum{label_str} {sum_value}"
 >                         )
-  
+
 >                 elif metric.metric_type == MetricType.SUMMARY:
                       # Export summary statistics
 >                     summary_data = self._aggregate_summary(metric)
 >                     for labels, quantiles, count, sum_value in summary_data:
 >                         label_str = self._format_labels(labels)
-  
+
                           # Export quantiles
 >                         for quantile, value in quantiles:
 >                             quantile_labels = dict(labels)
@@ -355,7 +355,7 @@
 >                             lines.append(
 >                                 f"{self.namespace}_{metric.name}{quantile_label_str} {value}"
 >                             )
-  
+
                           # Export count and sum
 >                         lines.append(
 >                             f"{self.namespace}_{metric.name}_count{label_str} {count}"
@@ -363,17 +363,17 @@
 >                         lines.append(
 >                             f"{self.namespace}_{metric.name}_sum{label_str} {sum_value}"
 >                         )
-  
+
 >                 lines.append("")  # Empty line between metrics
-  
+
 >             return "\n".join(lines)
-  
+
 >     def _serialize_labels(self, labels: Dict[str, str]) -> str:
 >         """Serialize labels to a consistent string key.
-  
+
 >         Args:
 >             labels: Label dictionary
-  
+
 >         Returns:
 >             Serialized label string
 >         """
@@ -381,13 +381,13 @@
 >             return ""
 >         items = sorted(labels.items())
 >         return ",".join(f"{k}={v}" for k, v in items)
-  
+
 >     def _format_labels(self, labels: Dict[str, str]) -> str:
 >         """Format labels for Prometheus export.
-  
+
 >         Args:
 >             labels: Label dictionary
-  
+
 >         Returns:
 >             Formatted label string
 >         """
@@ -396,16 +396,16 @@
 >         items = sorted(labels.items())
 >         label_parts = [f'{k}="{v}"' for k, v in items]
 >         return "{" + ",".join(label_parts) + "}"
-  
+
 >     def _aggregate_histogram(
 >         self,
 >         metric: Metric
 >     ) -> List[Tuple[Dict[str, str], List[Tuple[float, int]], int, float]]:
 >         """Aggregate histogram values by labels.
-  
+
 >         Args:
 >             metric: Histogram metric
-  
+
 >         Returns:
 >             List of (labels, buckets, count, sum) tuples
 >         """
@@ -414,7 +414,7 @@
 >         for value in metric.values:
 >             label_key = self._serialize_labels(value.labels)
 >             groups[label_key].append(value.value)
-  
+
 >         results = []
 >         for label_key, values in groups.items():
               # Parse labels back
@@ -424,33 +424,33 @@
 >                     if "=" in part:
 >                         k, v = part.split("=", 1)
 >                         labels[k] = v
-  
+
               # Calculate bucket counts
 >             buckets = []
 >             for bucket_limit in metric.buckets:
 >                 count = sum(1 for v in values if v <= bucket_limit)
 >                 buckets.append((bucket_limit, count))
-  
+
               # Add infinity bucket
 >             buckets.append((float("inf"), len(values)))
-  
+
               # Calculate total count and sum
 >             total_count = len(values)
 >             total_sum = sum(values)
-  
+
 >             results.append((labels, buckets, total_count, total_sum))
-  
+
 >         return results
-  
+
 >     def _aggregate_summary(
 >         self,
 >         metric: Metric
 >     ) -> List[Tuple[Dict[str, str], List[Tuple[float, float]], int, float]]:
 >         """Aggregate summary values by labels.
-  
+
 >         Args:
 >             metric: Summary metric
-  
+
 >         Returns:
 >             List of (labels, quantiles, count, sum) tuples
 >         """
@@ -459,7 +459,7 @@
 >         for value in metric.values:
 >             label_key = self._serialize_labels(value.labels)
 >             groups[label_key].append(value.value)
-  
+
 >         results = []
 >         for label_key, values in groups.items():
               # Parse labels back
@@ -469,35 +469,35 @@
 >                     if "=" in part:
 >                         k, v = part.split("=", 1)
 >                         labels[k] = v
-  
+
               # Calculate quantiles (0.5, 0.9, 0.99)
 >             sorted_values = sorted(values)
 >             quantiles = []
-  
+
 >             for q in [0.5, 0.9, 0.99]:
 >                 idx = int(len(sorted_values) * q)
 >                 if idx < len(sorted_values):
 >                     quantiles.append((q, sorted_values[idx]))
-  
+
               # Calculate total count and sum
 >             total_count = len(values)
 >             total_sum = sum(values)
-  
+
 >             results.append((labels, quantiles, total_count, total_sum))
-  
+
 >         return results
-  
-  
+
+
   # Global metrics instance
 > _global_metrics: Optional[MetricsCollector] = None
-  
-  
+
+
 > def get_metrics(namespace: str = "shadowfs") -> MetricsCollector:
 >     """Get or create global metrics instance.
-  
+
 >     Args:
 >         namespace: Metrics namespace
-  
+
 >     Returns:
 >         Global metrics collector
 >     """
@@ -505,11 +505,11 @@
 >     if _global_metrics is None:
 >         _global_metrics = MetricsCollector(namespace=namespace)
 >     return _global_metrics
-  
-  
+
+
 > def set_global_metrics(metrics: MetricsCollector) -> None:
 >     """Set the global metrics instance.
-  
+
 >     Args:
 >         metrics: Metrics collector to use globally
 >     """

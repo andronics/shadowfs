@@ -1,33 +1,33 @@
 """Tests for file operations module."""
+import hashlib
 import os
+import shutil
 import stat
 import tempfile
-import shutil
 from pathlib import Path
-from unittest.mock import patch, mock_open, MagicMock, ANY
-import hashlib
+from unittest.mock import ANY, MagicMock, mock_open, patch
 
 import pytest
 
 from shadowfs.foundation.constants import ErrorCode, FileAttributes, Limits
 from shadowfs.foundation.file_operations import (
     FileOperationError,
-    read_file,
-    write_file,
-    delete_file,
+    calculate_checksum,
     copy_file,
-    move_file,
-    get_file_attributes,
+    create_directory,
+    create_symlink,
+    delete_file,
     file_exists,
+    get_file_attributes,
+    is_executable,
     is_readable,
     is_writable,
-    is_executable,
-    create_directory,
     list_directory,
+    move_file,
     open_file,
-    calculate_checksum,
+    read_file,
     set_permissions,
-    create_symlink,
+    write_file,
 )
 
 
@@ -65,7 +65,7 @@ class TestReadFile:
 
     def test_read_text_file(self):
         """Test reading file in text mode."""
-        with tempfile.NamedTemporaryFile(mode='w', delete=False) as tmp:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as tmp:
             tmp.write("test content")
             tmp_path = tmp.name
 
@@ -131,7 +131,7 @@ class TestReadFile:
 
         try:
             # Mock open to raise IOError after file exists check passes
-            with patch('builtins.open', side_effect=IOError("IO error")):
+            with patch("builtins.open", side_effect=IOError("IO error")):
                 with pytest.raises(FileOperationError) as exc_info:
                     read_file(tmp_path)
                 assert exc_info.value.error_code == ErrorCode.INTERNAL_ERROR
@@ -148,7 +148,7 @@ class TestWriteFile:
             file_path = os.path.join(tmpdir, "test.bin")
             write_file(file_path, b"binary content", binary=True)
 
-            with open(file_path, 'rb') as f:
+            with open(file_path, "rb") as f:
                 assert f.read() == b"binary content"
 
     def test_write_text_file(self):
@@ -157,7 +157,7 @@ class TestWriteFile:
             file_path = os.path.join(tmpdir, "test.txt")
             write_file(file_path, "text content", binary=False)
 
-            with open(file_path, 'r') as f:
+            with open(file_path, "r") as f:
                 assert f.read() == "text content"
 
     def test_write_atomic(self):
@@ -169,13 +169,13 @@ class TestWriteFile:
             write_file(file_path, "initial", binary=False, atomic=True)
 
             # Verify atomic write by checking temp file usage
-            with open(file_path, 'r') as f:
+            with open(file_path, "r") as f:
                 assert f.read() == "initial"
 
             # Write new content atomically
             write_file(file_path, "new content", binary=False, atomic=True)
 
-            with open(file_path, 'r') as f:
+            with open(file_path, "r") as f:
                 assert f.read() == "new content"
 
     def test_write_non_atomic(self):
@@ -184,7 +184,7 @@ class TestWriteFile:
             file_path = os.path.join(tmpdir, "test.txt")
             write_file(file_path, "content", binary=False, atomic=False)
 
-            with open(file_path, 'r') as f:
+            with open(file_path, "r") as f:
                 assert f.read() == "content"
 
     def test_write_create_dirs(self):
@@ -194,7 +194,7 @@ class TestWriteFile:
             write_file(file_path, "content", binary=False, create_dirs=True)
 
             assert os.path.exists(file_path)
-            with open(file_path, 'r') as f:
+            with open(file_path, "r") as f:
                 assert f.read() == "content"
 
     def test_write_permission_denied(self):
@@ -212,7 +212,7 @@ class TestWriteFile:
 
     def test_write_io_error(self):
         """Test write with IO error."""
-        with patch('builtins.open', side_effect=IOError("IO error")):
+        with patch("builtins.open", side_effect=IOError("IO error")):
             with pytest.raises(FileOperationError) as exc_info:
                 write_file("/some/file.txt", "content", atomic=False)
             assert exc_info.value.error_code == ErrorCode.INTERNAL_ERROR
@@ -235,7 +235,7 @@ class TestDeleteFile:
             target = os.path.join(tmpdir, "target.txt")
             link = os.path.join(tmpdir, "link.txt")
 
-            with open(target, 'w') as f:
+            with open(target, "w") as f:
                 f.write("content")
             os.symlink(target, link)
 
@@ -261,7 +261,7 @@ class TestDeleteFile:
             target = os.path.join(tmpdir, "target.txt")
             link = os.path.join(tmpdir, "link.txt")
 
-            with open(target, 'w') as f:
+            with open(target, "w") as f:
                 f.write("content")
             os.symlink(target, link)
 
@@ -279,7 +279,7 @@ class TestDeleteFile:
         """Test delete with permission denied."""
         with tempfile.TemporaryDirectory() as tmpdir:
             file_path = os.path.join(tmpdir, "test.txt")
-            with open(file_path, 'w') as f:
+            with open(file_path, "w") as f:
                 f.write("content")
 
             os.chmod(tmpdir, 0o444)  # Read-only directory
@@ -292,7 +292,7 @@ class TestDeleteFile:
 
     def test_delete_io_error(self):
         """Test delete with IO error."""
-        with patch('os.unlink', side_effect=OSError("OS error")):
+        with patch("os.unlink", side_effect=OSError("OS error")):
             with pytest.raises(FileOperationError) as exc_info:
                 delete_file("/some/file.txt", safe=False)
             assert exc_info.value.error_code == ErrorCode.INTERNAL_ERROR
@@ -307,13 +307,13 @@ class TestCopyFile:
             source = os.path.join(tmpdir, "source.txt")
             dest = os.path.join(tmpdir, "dest.txt")
 
-            with open(source, 'w') as f:
+            with open(source, "w") as f:
                 f.write("content")
 
             copy_file(source, dest)
 
             assert os.path.exists(dest)
-            with open(dest, 'r') as f:
+            with open(dest, "r") as f:
                 assert f.read() == "content"
 
     def test_copy_preserve_metadata(self):
@@ -322,7 +322,7 @@ class TestCopyFile:
             source = os.path.join(tmpdir, "source.txt")
             dest = os.path.join(tmpdir, "dest.txt")
 
-            with open(source, 'w') as f:
+            with open(source, "w") as f:
                 f.write("content")
             os.chmod(source, 0o600)
 
@@ -338,7 +338,7 @@ class TestCopyFile:
             source = os.path.join(tmpdir, "source.txt")
             dest = os.path.join(tmpdir, "dest.txt")
 
-            with open(source, 'w') as f:
+            with open(source, "w") as f:
                 f.write("content")
 
             copy_file(source, dest, preserve_metadata=False)
@@ -350,9 +350,9 @@ class TestCopyFile:
             source = os.path.join(tmpdir, "source.txt")
             dest = os.path.join(tmpdir, "dest.txt")
 
-            with open(source, 'w') as f:
+            with open(source, "w") as f:
                 f.write("source content")
-            with open(dest, 'w') as f:
+            with open(dest, "w") as f:
                 f.write("dest content")
 
             with pytest.raises(FileOperationError) as exc_info:
@@ -365,14 +365,14 @@ class TestCopyFile:
             source = os.path.join(tmpdir, "source.txt")
             dest = os.path.join(tmpdir, "dest.txt")
 
-            with open(source, 'w') as f:
+            with open(source, "w") as f:
                 f.write("source content")
-            with open(dest, 'w') as f:
+            with open(dest, "w") as f:
                 f.write("dest content")
 
             copy_file(source, dest, overwrite=True)
 
-            with open(dest, 'r') as f:
+            with open(dest, "r") as f:
                 assert f.read() == "source content"
 
     def test_copy_source_not_found(self):
@@ -384,14 +384,14 @@ class TestCopyFile:
     def test_copy_permission_denied(self):
         """Test copy with permission denied."""
         with tempfile.NamedTemporaryFile() as tmp:
-            with patch('shutil.copy2', side_effect=PermissionError("Permission denied")):
+            with patch("shutil.copy2", side_effect=PermissionError("Permission denied")):
                 with pytest.raises(FileOperationError) as exc_info:
                     copy_file(tmp.name, "/dest.txt")
                 assert exc_info.value.error_code == ErrorCode.PERMISSION_DENIED
 
     def test_copy_shutil_error(self):
         """Test copy with shutil error."""
-        with patch('shutil.copy2', side_effect=shutil.Error("Shutil error")):
+        with patch("shutil.copy2", side_effect=shutil.Error("Shutil error")):
             with tempfile.NamedTemporaryFile() as tmp:
                 with pytest.raises(FileOperationError) as exc_info:
                     copy_file(tmp.name, "/dest.txt")
@@ -407,14 +407,14 @@ class TestMoveFile:
             source = os.path.join(tmpdir, "source.txt")
             dest = os.path.join(tmpdir, "dest.txt")
 
-            with open(source, 'w') as f:
+            with open(source, "w") as f:
                 f.write("content")
 
             move_file(source, dest)
 
             assert not os.path.exists(source)
             assert os.path.exists(dest)
-            with open(dest, 'r') as f:
+            with open(dest, "r") as f:
                 assert f.read() == "content"
 
     def test_move_overwrite_false(self):
@@ -423,9 +423,9 @@ class TestMoveFile:
             source = os.path.join(tmpdir, "source.txt")
             dest = os.path.join(tmpdir, "dest.txt")
 
-            with open(source, 'w') as f:
+            with open(source, "w") as f:
                 f.write("source content")
-            with open(dest, 'w') as f:
+            with open(dest, "w") as f:
                 f.write("dest content")
 
             with pytest.raises(FileOperationError) as exc_info:
@@ -438,15 +438,15 @@ class TestMoveFile:
             source = os.path.join(tmpdir, "source.txt")
             dest = os.path.join(tmpdir, "dest.txt")
 
-            with open(source, 'w') as f:
+            with open(source, "w") as f:
                 f.write("source content")
-            with open(dest, 'w') as f:
+            with open(dest, "w") as f:
                 f.write("dest content")
 
             move_file(source, dest, overwrite=True)
 
             assert not os.path.exists(source)
-            with open(dest, 'r') as f:
+            with open(dest, "r") as f:
                 assert f.read() == "source content"
 
     def test_move_source_not_found(self):
@@ -458,14 +458,14 @@ class TestMoveFile:
     def test_move_permission_denied(self):
         """Test move with permission denied."""
         with tempfile.NamedTemporaryFile() as tmp:
-            with patch('shutil.move', side_effect=PermissionError("Permission denied")):
+            with patch("shutil.move", side_effect=PermissionError("Permission denied")):
                 with pytest.raises(FileOperationError) as exc_info:
                     move_file(tmp.name, "/dest.txt")
                 assert exc_info.value.error_code == ErrorCode.PERMISSION_DENIED
 
     def test_move_shutil_error(self):
         """Test move with shutil error."""
-        with patch('shutil.move', side_effect=shutil.Error("Shutil error")):
+        with patch("shutil.move", side_effect=shutil.Error("Shutil error")):
             with tempfile.NamedTemporaryFile() as tmp:
                 with pytest.raises(FileOperationError) as exc_info:
                     move_file(tmp.name, "/dest.txt")
@@ -505,7 +505,7 @@ class TestGetFileAttributes:
             target = os.path.join(tmpdir, "target.txt")
             link = os.path.join(tmpdir, "link.txt")
 
-            with open(target, 'w') as f:
+            with open(target, "w") as f:
                 f.write("content")
             os.symlink(target, link)
 
@@ -519,7 +519,7 @@ class TestGetFileAttributes:
             target = os.path.join(tmpdir, "target.txt")
             link = os.path.join(tmpdir, "link.txt")
 
-            with open(target, 'w') as f:
+            with open(target, "w") as f:
                 f.write("content")
             os.symlink(target, link)
 
@@ -534,14 +534,14 @@ class TestGetFileAttributes:
 
     def test_get_attributes_permission_denied(self):
         """Test getting attributes with permission denied."""
-        with patch('os.stat', side_effect=PermissionError("Permission denied")):
+        with patch("os.stat", side_effect=PermissionError("Permission denied")):
             with pytest.raises(FileOperationError) as exc_info:
                 get_file_attributes("/some/file.txt")
             assert exc_info.value.error_code == ErrorCode.PERMISSION_DENIED
 
     def test_get_attributes_io_error(self):
         """Test getting attributes with IO error."""
-        with patch('os.stat', side_effect=OSError("OS error")):
+        with patch("os.stat", side_effect=OSError("OS error")):
             with pytest.raises(FileOperationError) as exc_info:
                 get_file_attributes("/some/file.txt")
             assert exc_info.value.error_code == ErrorCode.INTERNAL_ERROR
@@ -561,7 +561,7 @@ class TestFileChecks:
 
     def test_file_exists_with_path_error(self):
         """Test file_exists returns False on path error."""
-        with patch('shadowfs.foundation.path_utils.normalize_path', side_effect=Exception("Error")):
+        with patch("shadowfs.foundation.path_utils.normalize_path", side_effect=Exception("Error")):
             assert file_exists("/some/path") is False
 
     def test_is_readable_true(self):
@@ -683,7 +683,7 @@ class TestCreateDirectory:
 
     def test_create_io_error(self):
         """Test create with IO error."""
-        with patch('os.makedirs', side_effect=OSError("OS error")):
+        with patch("os.makedirs", side_effect=OSError("OS error")):
             with pytest.raises(FileOperationError) as exc_info:
                 create_directory("/some/dir")
             assert exc_info.value.error_code == ErrorCode.INTERNAL_ERROR
@@ -696,8 +696,8 @@ class TestListDirectory:
         """Test listing directory contents."""
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create some files
-            open(os.path.join(tmpdir, "file1.txt"), 'w').close()
-            open(os.path.join(tmpdir, "file2.txt"), 'w').close()
+            open(os.path.join(tmpdir, "file1.txt"), "w").close()
+            open(os.path.join(tmpdir, "file2.txt"), "w").close()
             os.mkdir(os.path.join(tmpdir, "subdir"))
 
             entries = list_directory(tmpdir)
@@ -709,8 +709,8 @@ class TestListDirectory:
     def test_list_directory_exclude_hidden(self):
         """Test listing directory excluding hidden files."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            open(os.path.join(tmpdir, "file.txt"), 'w').close()
-            open(os.path.join(tmpdir, ".hidden"), 'w').close()
+            open(os.path.join(tmpdir, "file.txt"), "w").close()
+            open(os.path.join(tmpdir, ".hidden"), "w").close()
 
             entries = list_directory(tmpdir, include_hidden=False)
             assert "file.txt" in entries
@@ -719,8 +719,8 @@ class TestListDirectory:
     def test_list_directory_include_hidden(self):
         """Test listing directory including hidden files."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            open(os.path.join(tmpdir, "file.txt"), 'w').close()
-            open(os.path.join(tmpdir, ".hidden"), 'w').close()
+            open(os.path.join(tmpdir, "file.txt"), "w").close()
+            open(os.path.join(tmpdir, ".hidden"), "w").close()
 
             entries = list_directory(tmpdir, include_hidden=True)
             assert "file.txt" in entries
@@ -729,9 +729,9 @@ class TestListDirectory:
     def test_list_directory_sorted(self):
         """Test directory entries are sorted."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            open(os.path.join(tmpdir, "zebra.txt"), 'w').close()
-            open(os.path.join(tmpdir, "alpha.txt"), 'w').close()
-            open(os.path.join(tmpdir, "beta.txt"), 'w').close()
+            open(os.path.join(tmpdir, "zebra.txt"), "w").close()
+            open(os.path.join(tmpdir, "alpha.txt"), "w").close()
+            open(os.path.join(tmpdir, "beta.txt"), "w").close()
 
             entries = list_directory(tmpdir)
             assert entries == ["alpha.txt", "beta.txt", "zebra.txt"]
@@ -762,7 +762,7 @@ class TestListDirectory:
 
     def test_list_io_error(self):
         """Test listing with IO error."""
-        with patch('os.listdir', side_effect=OSError("OS error")):
+        with patch("os.listdir", side_effect=OSError("OS error")):
             with pytest.raises(FileOperationError) as exc_info:
                 list_directory("/some/dir")
             assert exc_info.value.error_code == ErrorCode.INTERNAL_ERROR
@@ -773,12 +773,12 @@ class TestOpenFile:
 
     def test_open_file_read_text(self):
         """Test opening file for reading text."""
-        with tempfile.NamedTemporaryFile(mode='w', delete=False) as tmp:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as tmp:
             tmp.write("test content")
             tmp_path = tmp.name
 
         try:
-            with open_file(tmp_path, 'r') as f:
+            with open_file(tmp_path, "r") as f:
                 content = f.read()
                 assert content == "test content"
         finally:
@@ -789,10 +789,10 @@ class TestOpenFile:
         with tempfile.TemporaryDirectory() as tmpdir:
             file_path = os.path.join(tmpdir, "test.txt")
 
-            with open_file(file_path, 'w') as f:
+            with open_file(file_path, "w") as f:
                 f.write("test content")
 
-            with open(file_path, 'r') as f:
+            with open(file_path, "r") as f:
                 assert f.read() == "test content"
 
     def test_open_file_read_binary(self):
@@ -802,7 +802,7 @@ class TestOpenFile:
             tmp_path = tmp.name
 
         try:
-            with open_file(tmp_path, 'rb', encoding=None) as f:
+            with open_file(tmp_path, "rb", encoding=None) as f:
                 content = f.read()
                 assert content == b"binary content"
         finally:
@@ -810,12 +810,12 @@ class TestOpenFile:
 
     def test_open_file_with_encoding(self):
         """Test opening file with specific encoding."""
-        with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', delete=False) as tmp:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False) as tmp:
             tmp.write("Unicode: ñ")
             tmp_path = tmp.name
 
         try:
-            with open_file(tmp_path, 'r', encoding='utf-8') as f:
+            with open_file(tmp_path, "r", encoding="utf-8") as f:
                 content = f.read()
                 assert content == "Unicode: ñ"
         finally:
@@ -824,7 +824,7 @@ class TestOpenFile:
     def test_open_file_not_found(self):
         """Test opening non-existent file."""
         with pytest.raises(FileOperationError) as exc_info:
-            with open_file("/nonexistent/file.txt", 'r') as f:
+            with open_file("/nonexistent/file.txt", "r") as f:
                 pass
         assert exc_info.value.error_code == ErrorCode.NOT_FOUND
 
@@ -836,7 +836,7 @@ class TestOpenFile:
         try:
             os.chmod(tmp_path, 0o000)
             with pytest.raises(FileOperationError) as exc_info:
-                with open_file(tmp_path, 'r') as f:
+                with open_file(tmp_path, "r") as f:
                     pass
             assert exc_info.value.error_code == ErrorCode.PERMISSION_DENIED
         finally:
@@ -845,18 +845,18 @@ class TestOpenFile:
 
     def test_open_file_io_error(self):
         """Test opening file with IO error."""
-        with patch('builtins.open', side_effect=IOError("IO error")):
+        with patch("builtins.open", side_effect=IOError("IO error")):
             with pytest.raises(FileOperationError) as exc_info:
-                with open_file("/some/file.txt", 'r') as f:
+                with open_file("/some/file.txt", "r") as f:
                     pass
             assert exc_info.value.error_code == ErrorCode.INTERNAL_ERROR
 
     def test_open_file_closes_on_error(self):
         """Test file is closed even on error."""
         mock_file = MagicMock()
-        with patch('builtins.open', return_value=mock_file):
+        with patch("builtins.open", return_value=mock_file):
             try:
-                with open_file("/some/file.txt", 'r') as f:
+                with open_file("/some/file.txt", "r") as f:
                     raise RuntimeError("Test error")
             except RuntimeError:
                 pass
@@ -949,7 +949,7 @@ class TestCalculateChecksum:
 
     def test_checksum_io_error(self):
         """Test checksum with IO error."""
-        with patch('builtins.open', side_effect=IOError("IO error")):
+        with patch("builtins.open", side_effect=IOError("IO error")):
             with pytest.raises(FileOperationError) as exc_info:
                 calculate_checksum("/some/file.txt")
             assert exc_info.value.error_code == ErrorCode.INTERNAL_ERROR
@@ -990,14 +990,14 @@ class TestSetPermissions:
 
     def test_set_permissions_denied(self):
         """Test setting permissions with permission denied."""
-        with patch('os.chmod', side_effect=PermissionError("Permission denied")):
+        with patch("os.chmod", side_effect=PermissionError("Permission denied")):
             with pytest.raises(FileOperationError) as exc_info:
                 set_permissions("/some/file.txt", 0o644)
             assert exc_info.value.error_code == ErrorCode.PERMISSION_DENIED
 
     def test_set_permissions_io_error(self):
         """Test setting permissions with IO error."""
-        with patch('os.chmod', side_effect=OSError("OS error")):
+        with patch("os.chmod", side_effect=OSError("OS error")):
             with pytest.raises(FileOperationError) as exc_info:
                 set_permissions("/some/file.txt", 0o644)
             assert exc_info.value.error_code == ErrorCode.INTERNAL_ERROR
@@ -1012,7 +1012,7 @@ class TestCreateSymlink:
             target = os.path.join(tmpdir, "target.txt")
             link = os.path.join(tmpdir, "link.txt")
 
-            with open(target, 'w') as f:
+            with open(target, "w") as f:
                 f.write("content")
 
             create_symlink(target, link)
@@ -1038,9 +1038,9 @@ class TestCreateSymlink:
             target = os.path.join(tmpdir, "target.txt")
             link = os.path.join(tmpdir, "link.txt")
 
-            with open(target, 'w') as f:
+            with open(target, "w") as f:
                 f.write("content")
-            with open(link, 'w') as f:
+            with open(link, "w") as f:
                 f.write("existing")
 
             with pytest.raises(FileOperationError) as exc_info:
@@ -1063,7 +1063,7 @@ class TestCreateSymlink:
 
     def test_create_symlink_io_error(self):
         """Test creating symlink with IO error."""
-        with patch('os.symlink', side_effect=OSError("OS error")):
+        with patch("os.symlink", side_effect=OSError("OS error")):
             with pytest.raises(FileOperationError) as exc_info:
                 create_symlink("/target", "/link")
             assert exc_info.value.error_code == ErrorCode.INTERNAL_ERROR

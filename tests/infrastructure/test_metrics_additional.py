@@ -2,13 +2,14 @@
 """Additional tests for complete Metrics coverage."""
 
 import threading
+
 import pytest
 
 from shadowfs.infrastructure.metrics import (
-    MetricType,
-    MetricValue,
     Metric,
     MetricsCollector,
+    MetricType,
+    MetricValue,
     get_metrics,
     set_global_metrics,
 )
@@ -20,11 +21,7 @@ class TestMissingCoverage:
     def test_aggregate_summary_with_parse_error(self):
         """Test aggregate summary with label parsing edge cases."""
         collector = MetricsCollector()
-        metric = Metric(
-            name="test",
-            metric_type=MetricType.SUMMARY,
-            description="Test"
-        )
+        metric = Metric(name="test", metric_type=MetricType.SUMMARY, description="Test")
 
         # Create values with complex label serialization
         metric.values = [
@@ -47,10 +44,7 @@ class TestMissingCoverage:
         """Test histogram aggregation with label parsing edge case."""
         collector = MetricsCollector()
         metric = Metric(
-            name="test",
-            metric_type=MetricType.HISTOGRAM,
-            description="Test",
-            buckets=[0.1, 1.0]
+            name="test", metric_type=MetricType.HISTOGRAM, description="Test", buckets=[0.1, 1.0]
         )
 
         # Direct manipulation to test label parsing edge case
@@ -68,11 +62,7 @@ class TestMissingCoverage:
     def test_aggregate_summary_label_parsing_without_equals(self):
         """Test summary aggregation with label parsing edge case."""
         collector = MetricsCollector()
-        metric = Metric(
-            name="test",
-            metric_type=MetricType.SUMMARY,
-            description="Test"
-        )
+        metric = Metric(name="test", metric_type=MetricType.SUMMARY, description="Test")
 
         # Create a mock scenario where label serialization produces no equals
         # This tests the branch where "=" not in part
@@ -92,16 +82,10 @@ class TestMissingCoverage:
     def test_quantile_index_boundary(self):
         """Test quantile calculation at boundary conditions."""
         collector = MetricsCollector()
-        metric = Metric(
-            name="test",
-            metric_type=MetricType.SUMMARY,
-            description="Test"
-        )
+        metric = Metric(name="test", metric_type=MetricType.SUMMARY, description="Test")
 
         # Test with exactly one value - edge case for quantile calculation
-        metric.values = [
-            MetricValue(value=5.0, labels={"test": "single"})
-        ]
+        metric.values = [MetricValue(value=5.0, labels={"test": "single"})]
 
         result = collector._aggregate_summary(metric)
         assert len(result) == 1
@@ -118,10 +102,7 @@ class TestMissingCoverage:
 
         # Test histogram aggregation with direct manipulation
         metric = Metric(
-            name="test",
-            metric_type=MetricType.HISTOGRAM,
-            description="Test",
-            buckets=[0.1, 1.0]
+            name="test", metric_type=MetricType.HISTOGRAM, description="Test", buckets=[0.1, 1.0]
         )
 
         # Create a complex grouping scenario
@@ -200,11 +181,7 @@ class TestMissingCoverage:
     def test_empty_quantiles(self):
         """Test summary with no values for quantile calculation."""
         collector = MetricsCollector()
-        metric = Metric(
-            name="test",
-            metric_type=MetricType.SUMMARY,
-            description="Test"
-        )
+        metric = Metric(name="test", metric_type=MetricType.SUMMARY, description="Test")
 
         # Test with empty values list for a label group
         metric.values = []
@@ -215,11 +192,7 @@ class TestMissingCoverage:
     def test_quantile_calculation_edge_cases(self):
         """Test quantile calculations with various edge cases."""
         collector = MetricsCollector()
-        metric = Metric(
-            name="test",
-            metric_type=MetricType.SUMMARY,
-            description="Test"
-        )
+        metric = Metric(name="test", metric_type=MetricType.SUMMARY, description="Test")
 
         # Test with enough values to properly calculate quantiles
         values = []
@@ -259,10 +232,7 @@ class TestMissingCoverage:
         """Test histogram aggregation when groups dictionary is empty."""
         collector = MetricsCollector()
         metric = Metric(
-            name="test",
-            metric_type=MetricType.HISTOGRAM,
-            description="Test",
-            buckets=[0.1]
+            name="test", metric_type=MetricType.HISTOGRAM, description="Test", buckets=[0.1]
         )
 
         # No values means empty groups
@@ -274,11 +244,7 @@ class TestMissingCoverage:
     def test_aggregate_summary_with_empty_groups(self):
         """Test summary aggregation when groups dictionary is empty."""
         collector = MetricsCollector()
-        metric = Metric(
-            name="test",
-            metric_type=MetricType.SUMMARY,
-            description="Test"
-        )
+        metric = Metric(name="test", metric_type=MetricType.SUMMARY, description="Test")
 
         # No values means empty groups
         metric.values = []
@@ -289,11 +255,7 @@ class TestMissingCoverage:
     def test_quantile_boundary_conditions(self):
         """Test quantile calculations at exact boundaries."""
         collector = MetricsCollector()
-        metric = Metric(
-            name="test",
-            metric_type=MetricType.SUMMARY,
-            description="Test"
-        )
+        metric = Metric(name="test", metric_type=MetricType.SUMMARY, description="Test")
 
         # Test with exactly 2 values - edge case for 99th percentile
         metric.values = [
@@ -316,11 +278,7 @@ class TestMissingCoverage:
     def test_quantile_index_out_of_bounds(self):
         """Test quantile when calculated index is >= length."""
         collector = MetricsCollector()
-        metric = Metric(
-            name="test",
-            metric_type=MetricType.SUMMARY,
-            description="Test"
-        )
+        metric = Metric(name="test", metric_type=MetricType.SUMMARY, description="Test")
 
         # Create scenario where idx might be == len(sorted_values)
         # This happens when we have very few values

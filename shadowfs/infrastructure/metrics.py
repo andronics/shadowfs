@@ -17,22 +17,23 @@ Example:
     >>> print(metrics.export_prometheus())
 """
 
-import time
 import threading
+import time
 from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+
 from shadowfs.foundation.constants import ErrorCode
 
 
 class MetricType(Enum):
     """Types of metrics supported."""
 
-    COUNTER = "counter"      # Monotonically increasing value
-    GAUGE = "gauge"          # Value that can go up or down
+    COUNTER = "counter"  # Monotonically increasing value
+    GAUGE = "gauge"  # Value that can go up or down
     HISTOGRAM = "histogram"  # Distribution of values
-    SUMMARY = "summary"      # Statistical summary of values
+    SUMMARY = "summary"  # Statistical summary of values
 
 
 @dataclass
@@ -84,35 +85,20 @@ class MetricsCollector:
     def _initialize_default_metrics(self) -> None:
         """Initialize default ShadowFS metrics."""
         # Operation counters
-        self.register_counter(
-            "operations_total",
-            "Total number of filesystem operations"
-        )
-        self.register_counter(
-            "errors_total",
-            "Total number of errors"
-        )
+        self.register_counter("operations_total", "Total number of filesystem operations")
+        self.register_counter("errors_total", "Total number of errors")
 
         # Performance metrics
         self.register_histogram(
             "operation_duration_seconds",
             "Duration of filesystem operations in seconds",
-            buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 5.0]
+            buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 5.0],
         )
 
         # State gauges
-        self.register_gauge(
-            "cache_size_bytes",
-            "Current cache size in bytes"
-        )
-        self.register_gauge(
-            "open_files",
-            "Number of currently open files"
-        )
-        self.register_gauge(
-            "virtual_layers",
-            "Number of active virtual layers"
-        )
+        self.register_gauge("cache_size_bytes", "Current cache size in bytes")
+        self.register_gauge("open_files", "Number of currently open files")
+        self.register_gauge("virtual_layers", "Number of active virtual layers")
 
     def register_counter(self, name: str, description: str) -> None:
         """Register a counter metric.
@@ -124,9 +110,7 @@ class MetricsCollector:
         with self._lock:
             if name not in self._metrics:
                 self._metrics[name] = Metric(
-                    name=name,
-                    metric_type=MetricType.COUNTER,
-                    description=description
+                    name=name, metric_type=MetricType.COUNTER, description=description
                 )
 
     def register_gauge(self, name: str, description: str) -> None:
@@ -139,16 +123,11 @@ class MetricsCollector:
         with self._lock:
             if name not in self._metrics:
                 self._metrics[name] = Metric(
-                    name=name,
-                    metric_type=MetricType.GAUGE,
-                    description=description
+                    name=name, metric_type=MetricType.GAUGE, description=description
                 )
 
     def register_histogram(
-        self,
-        name: str,
-        description: str,
-        buckets: Optional[List[float]] = None
+        self, name: str, description: str, buckets: Optional[List[float]] = None
     ) -> None:
         """Register a histogram metric.
 
@@ -163,7 +142,7 @@ class MetricsCollector:
                     name=name,
                     metric_type=MetricType.HISTOGRAM,
                     description=description,
-                    buckets=buckets
+                    buckets=buckets,
                 )
 
     def register_summary(self, name: str, description: str) -> None:
@@ -176,16 +155,11 @@ class MetricsCollector:
         with self._lock:
             if name not in self._metrics:
                 self._metrics[name] = Metric(
-                    name=name,
-                    metric_type=MetricType.SUMMARY,
-                    description=description
+                    name=name, metric_type=MetricType.SUMMARY, description=description
                 )
 
     def increment_counter(
-        self,
-        name: str,
-        labels: Optional[Dict[str, str]] = None,
-        value: float = 1.0
+        self, name: str, labels: Optional[Dict[str, str]] = None, value: float = 1.0
     ) -> None:
         """Increment a counter metric.
 
@@ -216,12 +190,7 @@ class MetricsCollector:
             # Create new value
             metric.values.append(MetricValue(value=value, labels=labels))
 
-    def set_gauge(
-        self,
-        name: str,
-        value: float,
-        labels: Optional[Dict[str, str]] = None
-    ) -> None:
+    def set_gauge(self, name: str, value: float, labels: Optional[Dict[str, str]] = None) -> None:
         """Set a gauge metric value.
 
         Args:
@@ -252,10 +221,7 @@ class MetricsCollector:
             metric.values.append(MetricValue(value=value, labels=labels))
 
     def record_duration(
-        self,
-        name: str,
-        duration: float,
-        labels: Optional[Dict[str, str]] = None
+        self, name: str, duration: float, labels: Optional[Dict[str, str]] = None
     ) -> None:
         """Record a duration for histogram/summary.
 
@@ -314,9 +280,7 @@ class MetricsCollector:
                     # Export simple values
                     for value in metric.values:
                         label_str = self._format_labels(value.labels)
-                        lines.append(
-                            f"{self.namespace}_{metric.name}{label_str} {value.value}"
-                        )
+                        lines.append(f"{self.namespace}_{metric.name}{label_str} {value.value}")
 
                 elif metric.metric_type == MetricType.HISTOGRAM:
                     # Export histogram buckets and statistics
@@ -334,12 +298,8 @@ class MetricsCollector:
                             )
 
                         # Export count and sum
-                        lines.append(
-                            f"{self.namespace}_{metric.name}_count{label_str} {count}"
-                        )
-                        lines.append(
-                            f"{self.namespace}_{metric.name}_sum{label_str} {sum_value}"
-                        )
+                        lines.append(f"{self.namespace}_{metric.name}_count{label_str} {count}")
+                        lines.append(f"{self.namespace}_{metric.name}_sum{label_str} {sum_value}")
 
                 elif metric.metric_type == MetricType.SUMMARY:
                     # Export summary statistics
@@ -357,12 +317,8 @@ class MetricsCollector:
                             )
 
                         # Export count and sum
-                        lines.append(
-                            f"{self.namespace}_{metric.name}_count{label_str} {count}"
-                        )
-                        lines.append(
-                            f"{self.namespace}_{metric.name}_sum{label_str} {sum_value}"
-                        )
+                        lines.append(f"{self.namespace}_{metric.name}_count{label_str} {count}")
+                        lines.append(f"{self.namespace}_{metric.name}_sum{label_str} {sum_value}")
 
                 lines.append("")  # Empty line between metrics
 
@@ -398,8 +354,7 @@ class MetricsCollector:
         return "{" + ",".join(label_parts) + "}"
 
     def _aggregate_histogram(
-        self,
-        metric: Metric
+        self, metric: Metric
     ) -> List[Tuple[Dict[str, str], List[Tuple[float, int]], int, float]]:
         """Aggregate histogram values by labels.
 
@@ -443,8 +398,7 @@ class MetricsCollector:
         return results
 
     def _aggregate_summary(
-        self,
-        metric: Metric
+        self, metric: Metric
     ) -> List[Tuple[Dict[str, str], List[Tuple[float, float]], int, float]]:
         """Aggregate summary values by labels.
 

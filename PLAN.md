@@ -1843,7 +1843,10 @@ Implement Layer 2 components (configuration manager, cache manager, logging, met
 
 ---
 
-## Phase 3: Integration - Rules & Transforms (Weeks 6-7)
+## Phase 3: Integration - Rules & Transforms (Weeks 6-7) 🔄 IN PROGRESS
+
+**Started**: 2025-11-11
+**Status**: 0% Complete (Starting implementation)
 
 ### Objective
 
@@ -1851,10 +1854,44 @@ Implement rule engine and transform pipeline with plugin architecture.
 
 ### Deliverables
 
-- Rule evaluation engine
-- Pattern matching (glob, regex)
-- Transform pipeline with chaining
-- Core transforms (template, compression, conversion)
+- [ ] Pattern matching (glob, regex) - `pattern_matcher.py`
+- [ ] Rule evaluation engine - `rule_engine.py`
+- [ ] Transform pipeline with chaining - `transform_pipeline.py`
+- [ ] Core transforms:
+  - [ ] Template transform (Jinja2) - `transforms/template.py`
+  - [ ] Compression transform (gzip/bz2/lzma) - `transforms/compression.py`
+  - [ ] Format conversion (MD→HTML, CSV→JSON) - `transforms/format_conversion.py`
+- [ ] Comprehensive tests for all components
+- [ ] Integration tests for rule + transform workflows
+
+### Implementation Plan
+
+#### 3.1 Pattern Matcher (Day 1)
+- Implement glob pattern matching
+- Implement regex pattern matching
+- Path normalization for pattern matching
+- Tests with 100% coverage target
+
+#### 3.2 Rule Engine (Day 1-2)
+- Rule definition classes (include/exclude)
+- Rule evaluation logic
+- Attribute-based conditions (size, date, permissions)
+- Logical operators (AND, OR, NOT)
+- First-match-wins precedence
+- Tests with 100% coverage target
+
+#### 3.3 Transform Pipeline (Day 2)
+- Transform base class
+- Pipeline executor with chaining
+- Error handling and graceful degradation
+- Transform caching
+- Tests with 100% coverage target
+
+#### 3.4 Core Transforms (Day 3)
+- Template transform (Jinja2)
+- Compression transform (gzip/bz2/lzma)
+- Format conversion (MD→HTML, CSV→JSON)
+- Tests for each transform
 
 *[Detailed implementation continues...]*
 

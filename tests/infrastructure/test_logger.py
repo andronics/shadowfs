@@ -12,9 +12,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from shadowfs.infrastructure.logger import (
+    Logger,
     LogLevel,
     LogRecord,
-    Logger,
     get_logger,
     set_global_logger,
 )
@@ -120,9 +120,7 @@ class TestLogger:
         """Test creating a file handler."""
         logger = Logger(name="test")
         with tempfile.NamedTemporaryFile(suffix=".log") as tmp:
-            handler = logger.create_file_handler(
-                tmp.name, max_bytes=1000, backup_count=3
-            )
+            handler = logger.create_file_handler(tmp.name, max_bytes=1000, backup_count=3)
             assert isinstance(handler, logging.handlers.RotatingFileHandler)
             assert handler.maxBytes == 1000
             assert handler.backupCount == 3
@@ -468,9 +466,7 @@ class TestIntegration:
 
             # Create logger with small max size
             logger = Logger(name="rotation", level=LogLevel.INFO)
-            handler = logger.create_file_handler(
-                log_file, max_bytes=100, backup_count=2
-            )
+            handler = logger.create_file_handler(log_file, max_bytes=100, backup_count=2)
             logger.add_handler(handler)
 
             # Write enough to trigger rotation

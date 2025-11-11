@@ -20,11 +20,13 @@ Example:
 import os
 import threading
 import time
-import yaml
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Callable, Set
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Set
+
+import yaml
+
 from shadowfs.foundation.constants import ErrorCode
 
 
@@ -136,7 +138,7 @@ class ConfigManager:
             raise ConfigError(f"Config file not found: {file_path}", ErrorCode.NOT_FOUND)
 
         try:
-            with open(path, 'r') as f:
+            with open(path, "r") as f:
                 config_data = yaml.safe_load(f)
 
             if not isinstance(config_data, dict):
@@ -151,7 +153,9 @@ class ConfigManager:
         except Exception as e:
             raise ConfigError(f"Error loading config {file_path}: {e}", ErrorCode.INTERNAL_ERROR)
 
-    def load_dict(self, config_data: Dict[str, Any], source: ConfigSource = ConfigSource.RUNTIME) -> None:
+    def load_dict(
+        self, config_data: Dict[str, Any], source: ConfigSource = ConfigSource.RUNTIME
+    ) -> None:
         """Load configuration from dictionary.
 
         Args:
@@ -361,9 +365,7 @@ class ConfigManager:
             if self._watch_thread is None or not self._watch_thread.is_alive():
                 self._stop_watching.clear()
                 self._watch_thread = threading.Thread(
-                    target=self._watch_loop,
-                    args=(interval,),
-                    daemon=True
+                    target=self._watch_loop, args=(interval,), daemon=True
                 )
                 self._watch_thread.start()
 
@@ -498,8 +500,7 @@ class ConfigManager:
             else:
                 # Clear all except defaults
                 sources_to_clear = [
-                    s for s in self._config.keys()
-                    if s != ConfigSource.COMPILED_DEFAULTS
+                    s for s in self._config.keys() if s != ConfigSource.COMPILED_DEFAULTS
                 ]
                 for s in sources_to_clear:
                     del self._config[s]

@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 """Comprehensive tests for the CacheManager module."""
 
-import time
 import threading
-from unittest.mock import patch, MagicMock
+import time
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 from shadowfs.infrastructure.cache_manager import (
-    CacheLevel,
-    CacheEntry,
     CacheConfig,
-    LRUCache,
+    CacheEntry,
+    CacheLevel,
     CacheManager,
+    LRUCache,
     get_cache_manager,
     set_global_cache,
 )
@@ -50,11 +51,7 @@ class TestCacheEntry:
         """Test cache entry timestamps can be set manually."""
         # Test with explicit timestamps
         entry = CacheEntry(
-            key="test",
-            value="data",
-            size=4,
-            timestamp=1234567890.0,
-            last_access=1234567891.0
+            key="test", value="data", size=4, timestamp=1234567890.0, last_access=1234567891.0
         )
         assert entry.timestamp == 1234567890.0
         assert entry.last_access == 1234567891.0
@@ -73,31 +70,20 @@ class TestCacheEntry:
     def test_is_expired_with_explicit_time(self):
         """Test expiration with explicit timestamps."""
         # Create entry with specific timestamp
-        entry = CacheEntry(
-            key="test",
-            value="data",
-            size=4,
-            timestamp=1000.0
-        )
+        entry = CacheEntry(key="test", value="data", size=4, timestamp=1000.0)
 
         # Test expiration check at different current times
-        with patch('shadowfs.infrastructure.cache_manager.time.time', return_value=1010.0):
+        with patch("shadowfs.infrastructure.cache_manager.time.time", return_value=1010.0):
             assert not entry.is_expired(20)  # 20s TTL, not expired
             assert entry.is_expired(5)  # 5s TTL, expired
 
     def test_touch(self):
         """Test updating access time and count."""
-        entry = CacheEntry(
-            key="test",
-            value="data",
-            size=4,
-            timestamp=1000.0,
-            last_access=1000.0
-        )
+        entry = CacheEntry(key="test", value="data", size=4, timestamp=1000.0, last_access=1000.0)
         assert entry.access_count == 0
         assert entry.last_access == 1000.0
 
-        with patch('shadowfs.infrastructure.cache_manager.time.time', return_value=1005.0):
+        with patch("shadowfs.infrastructure.cache_manager.time.time", return_value=1005.0):
             entry.touch()
             assert entry.access_count == 1
             assert entry.last_access == 1005.0
@@ -111,11 +97,7 @@ class TestCacheConfig:
 
     def test_cache_config_creation(self):
         """Test creating cache configuration."""
-        config = CacheConfig(
-            max_entries=100,
-            max_size_bytes=1024,
-            ttl_seconds=60.0
-        )
+        config = CacheConfig(max_entries=100, max_size_bytes=1024, ttl_seconds=60.0)
         assert config.max_entries == 100
         assert config.max_size_bytes == 1024
         assert config.ttl_seconds == 60.0
@@ -123,50 +105,29 @@ class TestCacheConfig:
 
     def test_cache_config_disabled(self):
         """Test disabled cache configuration."""
-        config = CacheConfig(
-            max_entries=100,
-            max_size_bytes=1024,
-            ttl_seconds=60.0,
-            enabled=False
-        )
+        config = CacheConfig(max_entries=100, max_size_bytes=1024, ttl_seconds=60.0, enabled=False)
         assert config.enabled is False
 
     def test_validate_valid_config(self):
         """Test validating valid configuration."""
-        config = CacheConfig(
-            max_entries=100,
-            max_size_bytes=1024,
-            ttl_seconds=60.0
-        )
+        config = CacheConfig(max_entries=100, max_size_bytes=1024, ttl_seconds=60.0)
         config.validate()  # Should not raise
 
     def test_validate_invalid_entries(self):
         """Test validation with invalid max_entries."""
-        config = CacheConfig(
-            max_entries=0,
-            max_size_bytes=1024,
-            ttl_seconds=60.0
-        )
+        config = CacheConfig(max_entries=0, max_size_bytes=1024, ttl_seconds=60.0)
         with pytest.raises(ValueError, match="max_entries must be positive"):
             config.validate()
 
     def test_validate_invalid_size(self):
         """Test validation with invalid max_size_bytes."""
-        config = CacheConfig(
-            max_entries=100,
-            max_size_bytes=-1,
-            ttl_seconds=60.0
-        )
+        config = CacheConfig(max_entries=100, max_size_bytes=-1, ttl_seconds=60.0)
         with pytest.raises(ValueError, match="max_size_bytes must be positive"):
             config.validate()
 
     def test_validate_invalid_ttl(self):
         """Test validation with invalid ttl_seconds."""
-        config = CacheConfig(
-            max_entries=100,
-            max_size_bytes=1024,
-            ttl_seconds=0
-        )
+        config = CacheConfig(max_entries=100, max_size_bytes=1024, ttl_seconds=0)
         with pytest.raises(ValueError, match="ttl_seconds must be positive"):
             config.validate()
 
@@ -177,11 +138,7 @@ class TestLRUCache:
     @pytest.fixture
     def cache(self):
         """Create test cache."""
-        config = CacheConfig(
-            max_entries=3,
-            max_size_bytes=100,
-            ttl_seconds=1.0
-        )
+        config = CacheConfig(max_entries=3, max_size_bytes=100, ttl_seconds=1.0)
         return LRUCache(config)
 
     def test_lru_cache_creation(self, cache):
@@ -211,12 +168,7 @@ class TestLRUCache:
 
     def test_cache_disabled(self):
         """Test operations with disabled cache."""
-        config = CacheConfig(
-            max_entries=3,
-            max_size_bytes=100,
-            ttl_seconds=1.0,
-            enabled=False
-        )
+        config = CacheConfig(max_entries=3, max_size_bytes=100, ttl_seconds=1.0, enabled=False)
         cache = LRUCache(config)
 
         cache.set("key1", "value1", 6)
@@ -388,9 +340,7 @@ class TestLRUCache:
     def test_empty_cache_eviction(self):
         """Test eviction with empty cache doesn't crash."""
         config = CacheConfig(
-            max_entries=0,  # Will be caught by validation
-            max_size_bytes=100,
-            ttl_seconds=1.0
+            max_entries=0, max_size_bytes=100, ttl_seconds=1.0  # Will be caught by validation
         )
         with pytest.raises(ValueError):
             LRUCache(config)
@@ -635,7 +585,7 @@ class TestThreadSafety:
 
         threads = []
         for i in range(0, 100, 20):
-            t = threading.Thread(target=invalidator, args=(i, i+20))
+            t = threading.Thread(target=invalidator, args=(i, i + 20))
             threads.append(t)
             t.start()
 
@@ -667,9 +617,7 @@ class TestGlobalCache:
     def test_get_cache_manager_with_config(self):
         """Test get_cache_manager with custom config."""
         set_global_cache(None)
-        configs = {
-            CacheLevel.L1: CacheConfig(max_entries=5, max_size_bytes=50, ttl_seconds=0.5)
-        }
+        configs = {CacheLevel.L1: CacheConfig(max_entries=5, max_size_bytes=50, ttl_seconds=0.5)}
         cache = get_cache_manager(configs)
         assert cache.configs == configs
 

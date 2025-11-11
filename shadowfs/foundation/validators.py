@@ -6,18 +6,18 @@ paths, patterns, and other user inputs.
 
 Following Meta-Architecture v1.0.0 principles.
 """
-import re
 import os
-from typing import Any, Dict, List, Optional, Union, Pattern
+import re
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Pattern, Union
 
 from shadowfs.foundation.constants import (
+    ConfigKey,
     ErrorCode,
     Limits,
     RuleType,
     TransformType,
     VirtualLayerType,
-    ConfigKey,
 )
 
 
@@ -220,7 +220,9 @@ def validate_transform_config(transform: Dict[str, Any]) -> bool:
         TransformType(transform_type)
     except ValueError:
         valid_types = [t.value for t in TransformType]
-        raise ValidationError(f"Invalid transform type: {transform_type}. Must be one of {valid_types}")
+        raise ValidationError(
+            f"Invalid transform type: {transform_type}. Must be one of {valid_types}"
+        )
 
     # Required field: pattern
     if ConfigKey.TRANSFORM_PATTERN not in transform:
@@ -265,7 +267,9 @@ def validate_virtual_layer_config(layer: Dict[str, Any]) -> bool:
         VirtualLayerType(layer_type)
     except ValueError:
         valid_types = [t.value for t in VirtualLayerType]
-        raise ValidationError(f"Invalid virtual layer type: {layer_type}. Must be one of {valid_types}")
+        raise ValidationError(
+            f"Invalid virtual layer type: {layer_type}. Must be one of {valid_types}"
+        )
 
     return True
 
@@ -329,11 +333,11 @@ def validate_path(path: str) -> bool:
         raise ValidationError(f"Path exceeds maximum length ({Limits.MAX_PATH_LENGTH})")
 
     # Check for null bytes
-    if '\0' in path:
+    if "\0" in path:
         raise ValidationError("Path contains null bytes")
 
     # Check for control characters
-    if any(ord(c) < 32 and c not in '\t\n\r' for c in path):
+    if any(ord(c) < 32 and c not in "\t\n\r" for c in path):
         raise ValidationError("Path contains control characters")
 
     return True
@@ -358,7 +362,7 @@ def validate_pattern(pattern: str) -> bool:
         raise ValidationError(f"Pattern must be string, got {type(pattern)}")
 
     # Check for null bytes
-    if '\0' in pattern:
+    if "\0" in pattern:
         raise ValidationError("Pattern contains null bytes")
 
     # Try to compile as regex to check validity
@@ -391,7 +395,7 @@ def validate_layer_name(name: str) -> bool:
         raise ValidationError(f"Layer name must be string, got {type(name)}")
 
     # Must be valid directory name
-    if not re.match(r'^[a-zA-Z][a-zA-Z0-9_-]*$', name):
+    if not re.match(r"^[a-zA-Z][a-zA-Z0-9_-]*$", name):
         raise ValidationError(
             "Layer name must start with letter and contain only letters, numbers, underscore, and hyphen"
         )
@@ -422,7 +426,7 @@ def validate_version(version: str) -> bool:
         raise ValidationError(f"Version must be string, got {type(version)}")
 
     # Simple semantic version check (X.Y or X.Y.Z)
-    if not re.match(r'^\d+\.\d+(\.\d+)?$', version):
+    if not re.match(r"^\d+\.\d+(\.\d+)?$", version):
         raise ValidationError(f"Invalid version format: {version}. Expected X.Y or X.Y.Z")
 
     return True
@@ -543,14 +547,14 @@ def validate_glob(pattern: str) -> bool:
         raise ValidationError("Glob pattern cannot be empty")
 
     # Check for invalid glob characters in inappropriate positions
-    if pattern.startswith('/') and '**' in pattern:
-        parts = pattern.split('/')
+    if pattern.startswith("/") and "**" in pattern:
+        parts = pattern.split("/")
         for i, part in enumerate(parts):
-            if part == '**' and i not in (0, len(parts) - 1):
+            if part == "**" and i not in (0, len(parts) - 1):
                 # ** must be alone in its path segment
-                if i > 0 and parts[i-1] != '' and i < len(parts) - 1 and parts[i+1] != '':
+                if i > 0 and parts[i - 1] != "" and i < len(parts) - 1 and parts[i + 1] != "":
                     pass  # This is valid
-            elif '**' in part and part != '**':
+            elif "**" in part and part != "**":
                 raise ValidationError(f"'**' must be alone in path segment: {part}")
 
     return True

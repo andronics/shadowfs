@@ -1,17 +1,15 @@
 #!/usr/bin/env python3
 """Tests to achieve 100% coverage for file_operations.py."""
 
+import errno
 import os
 import tempfile
-import pytest
 from unittest.mock import patch
-import errno
 
-from shadowfs.foundation.file_operations import (
-    FileOperationError,
-    create_directory,
-)
+import pytest
+
 from shadowfs.foundation.constants import ErrorCode
+from shadowfs.foundation.file_operations import FileOperationError, create_directory
 
 
 class TestFinalBranchCoverage:
@@ -34,7 +32,7 @@ class TestFinalBranchCoverage:
 
     def test_create_directory_makedirs_exists_error_with_exist_ok(self):
         """Test makedirs raising FileExistsError when exist_ok=True."""
-        with patch('os.makedirs') as mock_makedirs:
+        with patch("os.makedirs") as mock_makedirs:
             # Make makedirs raise FileExistsError
             mock_makedirs.side_effect = FileExistsError("Directory exists")
 

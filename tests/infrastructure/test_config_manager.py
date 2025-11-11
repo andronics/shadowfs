@@ -2,22 +2,23 @@
 """Comprehensive tests for the ConfigManager module."""
 
 import os
-import time
 import tempfile
 import threading
+import time
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 import pytest
 
+from shadowfs.foundation.constants import ErrorCode
 from shadowfs.infrastructure.config_manager import (
-    ConfigSource,
-    ConfigValue,
     ConfigError,
     ConfigManager,
+    ConfigSource,
+    ConfigValue,
     get_config_manager,
     set_global_config,
 )
-from shadowfs.foundation.constants import ErrorCode
 
 
 class TestConfigSource:
@@ -53,11 +54,7 @@ class TestConfigValue:
 
     def test_config_value_creation(self):
         """Test creating a config value."""
-        value = ConfigValue(
-            value="test",
-            source=ConfigSource.USER_CONFIG,
-            validated=True
-        )
+        value = ConfigValue(value="test", source=ConfigSource.USER_CONFIG, validated=True)
         assert value.value == "test"
         assert value.source == ConfigSource.USER_CONFIG
         assert value.validated is True
@@ -98,8 +95,9 @@ class TestConfigManager:
     @pytest.fixture
     def temp_config_file(self):
         """Create temporary config file."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
-            f.write("""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            f.write(
+                """
 shadowfs:
   cache:
     max_size_mb: 256
@@ -107,7 +105,8 @@ shadowfs:
   logging:
     level: DEBUG
     file: /var/log/test.log
-""")
+"""
+            )
             temp_path = f.name
 
         yield temp_path
@@ -152,7 +151,7 @@ shadowfs:
 
     def test_load_file_invalid_yaml(self, manager):
         """Test loading invalid YAML file."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write("invalid: yaml: content: {]")
             temp_path = f.name
 
@@ -166,7 +165,7 @@ shadowfs:
 
     def test_load_file_not_dict(self, manager):
         """Test loading YAML file that's not a dictionary."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write("- item1\n- item2\n")
             temp_path = f.name
 
@@ -180,22 +179,21 @@ shadowfs:
 
     def test_load_dict(self, manager):
         """Test loading configuration from dictionary."""
-        config_data = {
-            "shadowfs": {
-                "cache": {"max_size_mb": 128}
-            }
-        }
+        config_data = {"shadowfs": {"cache": {"max_size_mb": 128}}}
 
         manager.load_dict(config_data, ConfigSource.RUNTIME)
         assert manager.get("shadowfs.cache.max_size_mb") == 128
 
     def test_load_environment(self):
         """Test loading configuration from environment variables."""
-        with patch.dict(os.environ, {
-            "SHADOWFS_CACHE_ENABLED": "false",
-            "SHADOWFS_LOGGING_LEVEL": "ERROR",
-            "SHADOWFS_CUSTOM_VALUE": "1024",
-        }):
+        with patch.dict(
+            os.environ,
+            {
+                "SHADOWFS_CACHE_ENABLED": "false",
+                "SHADOWFS_LOGGING_LEVEL": "ERROR",
+                "SHADOWFS_CUSTOM_VALUE": "1024",
+            },
+        ):
             # Create manager after setting env vars
             manager = ConfigManager()
 
@@ -238,13 +236,7 @@ shadowfs:
 
     def test_get_nested(self, manager):
         """Test getting nested values."""
-        config = {
-            "level1": {
-                "level2": {
-                    "level3": "value"
-                }
-            }
-        }
+        config = {"level1": {"level2": {"level3": "value"}}}
 
         assert manager._get_nested(config, "level1.level2.level3") == "value"
         assert manager._get_nested(config, "level1.level2") == {"level3": "value"}
@@ -253,9 +245,7 @@ shadowfs:
 
     def test_get_nested_non_dict(self, manager):
         """Test getting nested value when intermediate is not dict."""
-        config = {
-            "key": "string_value"
-        }
+        config = {"key": "string_value"}
 
         assert manager._get_nested(config, "key.nested") is None
 
@@ -302,14 +292,8 @@ shadowfs:
 
     def test_deep_merge(self, manager):
         """Test deep merging of configurations."""
-        base = {
-            "a": {"b": 1, "c": 2},
-            "d": 3
-        }
-        override = {
-            "a": {"c": 20, "e": 4},
-            "f": 5
-        }
+        base = {"a": {"b": 1, "c": 2}, "d": 3}
+        override = {"a": {"c": 20, "e": 4}, "f": 5}
 
         result = manager._deep_merge(base, override)
 
@@ -325,12 +309,14 @@ shadowfs:
         initial_value = manager.get("shadowfs.cache.max_size_mb")
 
         # Modify file
-        with open(temp_config_file, 'w') as f:
-            f.write("""
+        with open(temp_config_file, "w") as f:
+            f.write(
+                """
 shadowfs:
   cache:
     max_size_mb: 2048
-""")
+"""
+            )
 
         manager.reload()
         new_value = manager.get("shadowfs.cache.max_size_mb")
@@ -354,12 +340,14 @@ shadowfs:
         time.sleep(0.2)
 
         # Modify file
-        with open(temp_config_file, 'w') as f:
-            f.write("""
+        with open(temp_config_file, "w") as f:
+            f.write(
+                """
 shadowfs:
   cache:
     max_size_mb: 4096
-""")
+"""
+            )
 
         # Wait for change detection
         time.sleep(0.3)
@@ -393,6 +381,7 @@ shadowfs:
 
     def test_watcher_exception_handling(self, manager):
         """Test that watcher exceptions don't break notifications."""
+
         def bad_watcher(config):
             raise Exception("Watcher error")
 
@@ -408,43 +397,21 @@ shadowfs:
 
     def test_validate_schema_success(self, manager):
         """Test successful schema validation."""
-        manager.load_dict({
-            "shadowfs": {
-                "cache": {
-                    "max_size_mb": 512,
-                    "enabled": True
-                }
-            }
-        }, ConfigSource.RUNTIME)
+        manager.load_dict(
+            {"shadowfs": {"cache": {"max_size_mb": 512, "enabled": True}}}, ConfigSource.RUNTIME
+        )
 
-        schema = {
-            "shadowfs": {
-                "cache": {
-                    "max_size_mb": int,
-                    "enabled": bool
-                }
-            }
-        }
+        schema = {"shadowfs": {"cache": {"max_size_mb": int, "enabled": bool}}}
 
         assert manager.validate_schema(schema) is True
 
     def test_validate_schema_type_mismatch(self, manager):
         """Test schema validation with type mismatch."""
-        manager.load_dict({
-            "shadowfs": {
-                "cache": {
-                    "max_size_mb": "not_an_int"
-                }
-            }
-        }, ConfigSource.RUNTIME)
+        manager.load_dict(
+            {"shadowfs": {"cache": {"max_size_mb": "not_an_int"}}}, ConfigSource.RUNTIME
+        )
 
-        schema = {
-            "shadowfs": {
-                "cache": {
-                    "max_size_mb": int
-                }
-            }
-        }
+        schema = {"shadowfs": {"cache": {"max_size_mb": int}}}
 
         with pytest.raises(ConfigError) as exc_info:
             manager.validate_schema(schema)
@@ -453,19 +420,9 @@ shadowfs:
 
     def test_validate_schema_dict_type_mismatch(self, manager):
         """Test schema validation when dict expected but got other type."""
-        manager.load_dict({
-            "shadowfs": {
-                "cache": "not_a_dict"
-            }
-        }, ConfigSource.RUNTIME)
+        manager.load_dict({"shadowfs": {"cache": "not_a_dict"}}, ConfigSource.RUNTIME)
 
-        schema = {
-            "shadowfs": {
-                "cache": {
-                    "max_size_mb": int
-                }
-            }
-        }
+        schema = {"shadowfs": {"cache": {"max_size_mb": int}}}
 
         with pytest.raises(ConfigError) as exc_info:
             manager.validate_schema(schema)
@@ -537,7 +494,7 @@ class TestFileWatching:
 
         # Create and watch file
         config_file = os.path.join(temp_dir, "config.yaml")
-        with open(config_file, 'w') as f:
+        with open(config_file, "w") as f:
             f.write("shadowfs:\n  test: value\n")
 
         manager.load_file(config_file)
@@ -559,9 +516,9 @@ class TestFileWatching:
         file1 = os.path.join(temp_dir, "config1.yaml")
         file2 = os.path.join(temp_dir, "config2.yaml")
 
-        with open(file1, 'w') as f:
+        with open(file1, "w") as f:
             f.write("shadowfs:\n  key1: value1\n")
-        with open(file2, 'w') as f:
+        with open(file2, "w") as f:
             f.write("shadowfs:\n  key2: value2\n")
 
         manager.load_file(file1)
@@ -573,9 +530,9 @@ class TestFileWatching:
         time.sleep(0.2)
 
         # Modify both files
-        with open(file1, 'w') as f:
+        with open(file1, "w") as f:
             f.write("shadowfs:\n  key1: new_value1\n")
-        with open(file2, 'w') as f:
+        with open(file2, "w") as f:
             f.write("shadowfs:\n  key2: new_value2\n")
 
         time.sleep(0.3)
@@ -610,7 +567,7 @@ class TestGlobalFunctions:
 
     def test_get_config_manager_with_file(self):
         """Test get_config_manager with config file."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write("shadowfs:\n  test: value\n")
             temp_path = f.name
 

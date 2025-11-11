@@ -1,25 +1,26 @@
 #!/usr/bin/env python3
 """Additional tests to achieve 100% coverage for file_operations.py."""
 
+import errno
 import os
 import tempfile
-import pytest
-from unittest.mock import patch, MagicMock
-import errno
+from unittest.mock import MagicMock, patch
 
+import pytest
+
+from shadowfs.foundation.constants import ErrorCode
 from shadowfs.foundation.file_operations import (
     FileOperationError,
-    write_file,
+    create_directory,
     delete_file,
+    file_exists,
     get_file_attributes,
+    is_executable,
     is_readable,
     is_writable,
-    is_executable,
-    file_exists,
-    create_directory,
     open_file,
+    write_file,
 )
-from shadowfs.foundation.constants import ErrorCode
 
 
 class TestAdditionalCoverage:
@@ -31,7 +32,7 @@ class TestAdditionalCoverage:
             test_file = os.path.join(tmpdir, "subdir", "file.txt")
 
             # Mock makedirs to raise OSError with errno != EEXIST
-            with patch('os.makedirs') as mock_makedirs:
+            with patch("os.makedirs") as mock_makedirs:
                 error = OSError("Some other error")
                 error.errno = errno.EACCES  # Not EEXIST
                 mock_makedirs.side_effect = error
@@ -47,7 +48,7 @@ class TestAdditionalCoverage:
             tmp.write(b"content")
 
         try:
-            with patch('os.unlink') as mock_unlink:
+            with patch("os.unlink") as mock_unlink:
                 mock_unlink.side_effect = OSError("Generic error")
 
                 with pytest.raises(FileOperationError) as exc_info:
@@ -67,7 +68,7 @@ class TestAdditionalCoverage:
 
     def test_is_readable_oserror(self):
         """Test is_readable when access raises OSError - should return False."""
-        with patch('os.access') as mock_access:
+        with patch("os.access") as mock_access:
             mock_access.side_effect = OSError("Generic error")
 
             # Should return False when OSError is raised
@@ -75,7 +76,7 @@ class TestAdditionalCoverage:
 
     def test_is_writable_oserror(self):
         """Test is_writable when access raises OSError - should return False."""
-        with patch('os.access') as mock_access:
+        with patch("os.access") as mock_access:
             mock_access.side_effect = OSError("Generic error")
 
             # Should return False when OSError is raised
@@ -83,7 +84,7 @@ class TestAdditionalCoverage:
 
     def test_is_executable_oserror(self):
         """Test is_executable when access raises OSError - should return False."""
-        with patch('os.access') as mock_access:
+        with patch("os.access") as mock_access:
             mock_access.side_effect = OSError("Generic error")
 
             # Should return False when OSError is raised
@@ -91,7 +92,7 @@ class TestAdditionalCoverage:
 
     def test_file_exists_oserror(self):
         """Test file_exists when exists raises OSError - should return False."""
-        with patch('os.path.exists') as mock_exists:
+        with patch("os.path.exists") as mock_exists:
             mock_exists.side_effect = OSError("Generic error")
 
             # Should return False when OSError is raised
@@ -99,7 +100,7 @@ class TestAdditionalCoverage:
 
     def test_create_directory_oserror(self):
         """Test create_directory when makedirs raises generic OSError."""
-        with patch('os.makedirs') as mock_makedirs:
+        with patch("os.makedirs") as mock_makedirs:
             # Raise OSError with errno != EEXIST
             error = OSError("Generic error")
             error.errno = errno.EACCES
@@ -118,7 +119,7 @@ class TestAdditionalCoverage:
         try:
             # Test that file handle is properly closed even when exception occurs
             with pytest.raises(ValueError):
-                with open_file(tmp_path, 'r') as f:
+                with open_file(tmp_path, "r") as f:
                     # Verify file is open
                     assert not f.closed
                     # Raise exception
@@ -134,9 +135,9 @@ class TestAdditionalCoverage:
         with tempfile.TemporaryDirectory() as tmpdir:
             test_file = os.path.join(tmpdir, "test.txt")
 
-            with open_file(test_file, 'w') as f:
+            with open_file(test_file, "w") as f:
                 f.write("test content")
 
             # Verify content was written
-            with open(test_file, 'r') as f:
+            with open(test_file, "r") as f:
                 assert f.read() == "test content"

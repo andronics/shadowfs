@@ -7,17 +7,11 @@ validation, traversal prevention, and safe path resolution.
 Following Meta-Architecture v1.0.0 principles.
 """
 import os
-from pathlib import Path
-from typing import Optional, List, Tuple
 from functools import lru_cache
+from pathlib import Path
+from typing import List, Optional, Tuple
 
-from shadowfs.foundation.constants import (
-    ErrorCode,
-    FilePath,
-    VirtualPath,
-    RealPath,
-    Limits,
-)
+from shadowfs.foundation.constants import ErrorCode, FilePath, Limits, RealPath, VirtualPath
 
 
 class PathError(Exception):
@@ -57,8 +51,7 @@ def normalize_path(path: str) -> str:
 
     if len(path) > Limits.MAX_PATH_LENGTH:
         raise PathError(
-            f"Path exceeds maximum length ({Limits.MAX_PATH_LENGTH})",
-            ErrorCode.INVALID_INPUT
+            f"Path exceeds maximum length ({Limits.MAX_PATH_LENGTH})", ErrorCode.INVALID_INPUT
         )
 
     # Expand home directory
@@ -198,7 +191,7 @@ def get_filename(path: str) -> str:
     if len(filename) > Limits.MAX_FILENAME_LENGTH:
         raise PathError(
             f"Filename exceeds maximum length ({Limits.MAX_FILENAME_LENGTH})",
-            ErrorCode.INVALID_INPUT
+            ErrorCode.INVALID_INPUT,
         )
 
     return filename
@@ -246,15 +239,11 @@ def resolve_symlinks(path: str, max_depth: int = None) -> str:
         while os.path.islink(current):
             if depth >= max_depth:
                 raise PathError(
-                    f"Symlink depth exceeds maximum ({max_depth})",
-                    ErrorCode.INVALID_INPUT
+                    f"Symlink depth exceeds maximum ({max_depth})", ErrorCode.INVALID_INPUT
                 )
 
             if current in visited:
-                raise PathError(
-                    "Circular symlink detected",
-                    ErrorCode.INVALID_INPUT
-                )
+                raise PathError("Circular symlink detected", ErrorCode.INVALID_INPUT)
 
             visited.add(current)
             current = os.readlink(current)
@@ -297,15 +286,15 @@ def validate_filename(filename: str) -> bool:
     # Check for path separators (both Unix and Windows)
     if os.sep in filename:
         return False
-    if '/' in filename or '\\' in filename:  # Explicitly check both
+    if "/" in filename or "\\" in filename:  # Explicitly check both
         return False
 
     # Check for null bytes
-    if '\0' in filename:
+    if "\0" in filename:
         return False
 
     # Check for reserved names
-    if filename in ('.', '..'):
+    if filename in (".", ".."):
         return False
 
     # Check for control characters
@@ -350,10 +339,7 @@ def make_relative(base: str, path: str) -> str:
         path = normalize_path(path)
 
         if not path.startswith(base + os.sep) and path != base:
-            raise PathError(
-                f"Path '{path}' is not within base '{base}'",
-                ErrorCode.INVALID_INPUT
-            )
+            raise PathError(f"Path '{path}' is not within base '{base}'", ErrorCode.INVALID_INPUT)
 
         return os.path.relpath(path, base)
     except (OSError, ValueError) as e:
@@ -403,7 +389,7 @@ def is_hidden_file(path: str) -> bool:
         True if hidden, False otherwise
     """
     filename = get_filename(path)
-    return filename.startswith('.') and filename != '.' and filename != '..'
+    return filename.startswith(".") and filename != "." and filename != ".."
 
 
 def list_path_components(path: str) -> List[str]:
@@ -451,7 +437,7 @@ def common_path_prefix(paths: List[str]) -> str:
         normalized = [normalize_path(p) for p in paths]
 
         # Use os.path.commonpath for Python 3.5+
-        if hasattr(os.path, 'commonpath'):
+        if hasattr(os.path, "commonpath"):
             return os.path.commonpath(normalized)
         else:
             # Fallback for older Python

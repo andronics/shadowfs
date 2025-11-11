@@ -6,25 +6,20 @@ resource management, and safety checks.
 
 Following Meta-Architecture v1.0.0 principles.
 """
+import hashlib
 import os
+import shutil
 import stat
 import tempfile
-import shutil
-from pathlib import Path
-from typing import Optional, Union, List, BinaryIO, TextIO, Iterator
 from contextlib import contextmanager
-import hashlib
+from pathlib import Path
+from typing import BinaryIO, Iterator, List, Optional, TextIO, Union
 
-from shadowfs.foundation.constants import (
-    ErrorCode,
-    FileContent,
-    FileAttributes,
-    Limits,
-)
+from shadowfs.foundation.constants import ErrorCode, FileAttributes, FileContent, Limits
 from shadowfs.foundation.path_utils import (
     PathError,
-    normalize_path,
     is_safe_path,
+    normalize_path,
     validate_filename,
 )
 
@@ -44,9 +39,7 @@ class FileOperationError(Exception):
 
 
 def read_file(
-    path: str,
-    binary: bool = True,
-    size_limit: Optional[int] = None
+    path: str, binary: bool = True, size_limit: Optional[int] = None
 ) -> Union[bytes, str]:
     """Safely read file contents.
 
@@ -71,8 +64,7 @@ def read_file(
         file_size = os.path.getsize(path)
         if file_size > size_limit:
             raise FileOperationError(
-                f"File size ({file_size}) exceeds limit ({size_limit})",
-                ErrorCode.INVALID_INPUT
+                f"File size ({file_size}) exceeds limit ({size_limit})", ErrorCode.INVALID_INPUT
             )
 
         mode = "rb" if binary else "r"
@@ -82,20 +74,11 @@ def read_file(
         return content
 
     except FileNotFoundError:
-        raise FileOperationError(
-            f"File not found: {path}",
-            ErrorCode.NOT_FOUND
-        )
+        raise FileOperationError(f"File not found: {path}", ErrorCode.NOT_FOUND)
     except PermissionError:
-        raise FileOperationError(
-            f"Permission denied: {path}",
-            ErrorCode.PERMISSION_DENIED
-        )
+        raise FileOperationError(f"Permission denied: {path}", ErrorCode.PERMISSION_DENIED)
     except (OSError, IOError) as e:
-        raise FileOperationError(
-            f"Failed to read file: {e}",
-            ErrorCode.INTERNAL_ERROR
-        )
+        raise FileOperationError(f"Failed to read file: {e}", ErrorCode.INTERNAL_ERROR)
 
 
 def write_file(
@@ -103,7 +86,7 @@ def write_file(
     content: Union[bytes, str],
     binary: bool = True,
     atomic: bool = True,
-    create_dirs: bool = False
+    create_dirs: bool = False,
 ) -> None:
     """Safely write content to file.
 
@@ -131,11 +114,7 @@ def write_file(
         if atomic:
             # Atomic write using temporary file
             dir_name = os.path.dirname(path)
-            with tempfile.NamedTemporaryFile(
-                mode=mode,
-                dir=dir_name,
-                delete=False
-            ) as tmp_file:
+            with tempfile.NamedTemporaryFile(mode=mode, dir=dir_name, delete=False) as tmp_file:
                 tmp_file.write(content)
                 tmp_path = tmp_file.name
 
@@ -147,15 +126,9 @@ def write_file(
                 f.write(content)
 
     except PermissionError:
-        raise FileOperationError(
-            f"Permission denied: {path}",
-            ErrorCode.PERMISSION_DENIED
-        )
+        raise FileOperationError(f"Permission denied: {path}", ErrorCode.PERMISSION_DENIED)
     except (OSError, IOError) as e:
-        raise FileOperationError(
-            f"Failed to write file: {e}",
-            ErrorCode.INTERNAL_ERROR
-        )
+        raise FileOperationError(f"Failed to write file: {e}", ErrorCode.INTERNAL_ERROR)
 
 
 def delete_file(path: str, safe: bool = True) -> None:
@@ -176,10 +149,7 @@ def delete_file(path: str, safe: bool = True) -> None:
         if safe:
             # Don't follow symlinks - check this first!
             if os.path.islink(path):
-                raise FileOperationError(
-                    f"Cannot delete symlink: {path}",
-                    ErrorCode.INVALID_INPUT
-                )
+                raise FileOperationError(f"Cannot delete symlink: {path}", ErrorCode.INVALID_INPUT)
 
             # For safe mode, normalize the path (resolves symlinks) only if it exists
             if os.path.exists(path):
@@ -187,10 +157,7 @@ def delete_file(path: str, safe: bool = True) -> None:
 
                 # Check it's a regular file
                 if not os.path.isfile(path):
-                    raise FileOperationError(
-                        f"Not a regular file: {path}",
-                        ErrorCode.INVALID_INPUT
-                    )
+                    raise FileOperationError(f"Not a regular file: {path}", ErrorCode.INVALID_INPUT)
         else:
             # For unsafe mode, don't resolve symlinks - just validate the path
             # We still want to validate the path but not resolve symlinks
@@ -202,27 +169,15 @@ def delete_file(path: str, safe: bool = True) -> None:
         os.unlink(path)
 
     except FileNotFoundError:
-        raise FileOperationError(
-            f"File not found: {path}",
-            ErrorCode.NOT_FOUND
-        )
+        raise FileOperationError(f"File not found: {path}", ErrorCode.NOT_FOUND)
     except PermissionError:
-        raise FileOperationError(
-            f"Permission denied: {path}",
-            ErrorCode.PERMISSION_DENIED
-        )
+        raise FileOperationError(f"Permission denied: {path}", ErrorCode.PERMISSION_DENIED)
     except (OSError, IOError) as e:
-        raise FileOperationError(
-            f"Failed to delete file: {e}",
-            ErrorCode.INTERNAL_ERROR
-        )
+        raise FileOperationError(f"Failed to delete file: {e}", ErrorCode.INTERNAL_ERROR)
 
 
 def copy_file(
-    source: str,
-    destination: str,
-    preserve_metadata: bool = True,
-    overwrite: bool = False
+    source: str, destination: str, preserve_metadata: bool = True, overwrite: bool = False
 ) -> None:
     """Safely copy a file.
 
@@ -241,16 +196,12 @@ def copy_file(
 
         # Check source exists
         if not os.path.exists(source):
-            raise FileOperationError(
-                f"Source file not found: {source}",
-                ErrorCode.NOT_FOUND
-            )
+            raise FileOperationError(f"Source file not found: {source}", ErrorCode.NOT_FOUND)
 
         # Check destination
         if os.path.exists(destination) and not overwrite:
             raise FileOperationError(
-                f"Destination already exists: {destination}",
-                ErrorCode.CONFLICT
+                f"Destination already exists: {destination}", ErrorCode.CONFLICT
             )
 
         if preserve_metadata:
@@ -259,22 +210,12 @@ def copy_file(
             shutil.copy(source, destination)
 
     except PermissionError:
-        raise FileOperationError(
-            f"Permission denied",
-            ErrorCode.PERMISSION_DENIED
-        )
+        raise FileOperationError(f"Permission denied", ErrorCode.PERMISSION_DENIED)
     except (OSError, IOError, shutil.Error) as e:
-        raise FileOperationError(
-            f"Failed to copy file: {e}",
-            ErrorCode.INTERNAL_ERROR
-        )
+        raise FileOperationError(f"Failed to copy file: {e}", ErrorCode.INTERNAL_ERROR)
 
 
-def move_file(
-    source: str,
-    destination: str,
-    overwrite: bool = False
-) -> None:
+def move_file(source: str, destination: str, overwrite: bool = False) -> None:
     """Safely move a file.
 
     Args:
@@ -291,30 +232,20 @@ def move_file(
 
         # Check source exists
         if not os.path.exists(source):
-            raise FileOperationError(
-                f"Source file not found: {source}",
-                ErrorCode.NOT_FOUND
-            )
+            raise FileOperationError(f"Source file not found: {source}", ErrorCode.NOT_FOUND)
 
         # Check destination
         if os.path.exists(destination) and not overwrite:
             raise FileOperationError(
-                f"Destination already exists: {destination}",
-                ErrorCode.CONFLICT
+                f"Destination already exists: {destination}", ErrorCode.CONFLICT
             )
 
         shutil.move(source, destination)
 
     except PermissionError:
-        raise FileOperationError(
-            f"Permission denied",
-            ErrorCode.PERMISSION_DENIED
-        )
+        raise FileOperationError(f"Permission denied", ErrorCode.PERMISSION_DENIED)
     except (OSError, IOError, shutil.Error) as e:
-        raise FileOperationError(
-            f"Failed to move file: {e}",
-            ErrorCode.INTERNAL_ERROR
-        )
+        raise FileOperationError(f"Failed to move file: {e}", ErrorCode.INTERNAL_ERROR)
 
 
 def get_file_attributes(path: str, follow_symlinks: bool = True) -> FileAttributes:
@@ -357,24 +288,15 @@ def get_file_attributes(path: str, follow_symlinks: bool = True) -> FileAttribut
             st_size=stat_result.st_size,
             st_atime=stat_result.st_atime,
             st_mtime=stat_result.st_mtime,
-            st_ctime=stat_result.st_ctime
+            st_ctime=stat_result.st_ctime,
         )
 
     except FileNotFoundError:
-        raise FileOperationError(
-            f"File not found: {path}",
-            ErrorCode.NOT_FOUND
-        )
+        raise FileOperationError(f"File not found: {path}", ErrorCode.NOT_FOUND)
     except PermissionError:
-        raise FileOperationError(
-            f"Permission denied: {path}",
-            ErrorCode.PERMISSION_DENIED
-        )
+        raise FileOperationError(f"Permission denied: {path}", ErrorCode.PERMISSION_DENIED)
     except (OSError, IOError) as e:
-        raise FileOperationError(
-            f"Failed to get file attributes: {e}",
-            ErrorCode.INTERNAL_ERROR
-        )
+        raise FileOperationError(f"Failed to get file attributes: {e}", ErrorCode.INTERNAL_ERROR)
 
 
 def file_exists(path: str) -> bool:
@@ -442,10 +364,7 @@ def is_executable(path: str) -> bool:
 
 
 def create_directory(
-    path: str,
-    mode: int = 0o755,
-    parents: bool = True,
-    exist_ok: bool = True
+    path: str, mode: int = 0o755, parents: bool = True, exist_ok: bool = True
 ) -> None:
     """Safely create a directory.
 
@@ -470,26 +389,14 @@ def create_directory(
 
     except FileExistsError:
         if not exist_ok:
-            raise FileOperationError(
-                f"Directory already exists: {path}",
-                ErrorCode.CONFLICT
-            )
+            raise FileOperationError(f"Directory already exists: {path}", ErrorCode.CONFLICT)
     except PermissionError:
-        raise FileOperationError(
-            f"Permission denied: {path}",
-            ErrorCode.PERMISSION_DENIED
-        )
+        raise FileOperationError(f"Permission denied: {path}", ErrorCode.PERMISSION_DENIED)
     except (OSError, IOError) as e:
-        raise FileOperationError(
-            f"Failed to create directory: {e}",
-            ErrorCode.INTERNAL_ERROR
-        )
+        raise FileOperationError(f"Failed to create directory: {e}", ErrorCode.INTERNAL_ERROR)
 
 
-def list_directory(
-    path: str,
-    include_hidden: bool = False
-) -> List[str]:
+def list_directory(path: str, include_hidden: bool = False) -> List[str]:
     """List directory contents.
 
     Args:
@@ -508,37 +415,23 @@ def list_directory(
         entries = os.listdir(path)
 
         if not include_hidden:
-            entries = [e for e in entries if not e.startswith('.')]
+            entries = [e for e in entries if not e.startswith(".")]
 
         return sorted(entries)
 
     except FileNotFoundError:
-        raise FileOperationError(
-            f"Directory not found: {path}",
-            ErrorCode.NOT_FOUND
-        )
+        raise FileOperationError(f"Directory not found: {path}", ErrorCode.NOT_FOUND)
     except NotADirectoryError:
-        raise FileOperationError(
-            f"Not a directory: {path}",
-            ErrorCode.INVALID_INPUT
-        )
+        raise FileOperationError(f"Not a directory: {path}", ErrorCode.INVALID_INPUT)
     except PermissionError:
-        raise FileOperationError(
-            f"Permission denied: {path}",
-            ErrorCode.PERMISSION_DENIED
-        )
+        raise FileOperationError(f"Permission denied: {path}", ErrorCode.PERMISSION_DENIED)
     except (OSError, IOError) as e:
-        raise FileOperationError(
-            f"Failed to list directory: {e}",
-            ErrorCode.INTERNAL_ERROR
-        )
+        raise FileOperationError(f"Failed to list directory: {e}", ErrorCode.INTERNAL_ERROR)
 
 
 @contextmanager
 def open_file(
-    path: str,
-    mode: str = "r",
-    encoding: Optional[str] = "utf-8"
+    path: str, mode: str = "r", encoding: Optional[str] = "utf-8"
 ) -> Iterator[Union[BinaryIO, TextIO]]:
     """Context manager for safe file operations.
 
@@ -558,7 +451,7 @@ def open_file(
         path = normalize_path(path)
 
         # Determine if binary mode
-        binary_mode = 'b' in mode
+        binary_mode = "b" in mode
 
         if binary_mode:
             file_handle = open(path, mode)
@@ -568,20 +461,11 @@ def open_file(
         yield file_handle
 
     except FileNotFoundError:
-        raise FileOperationError(
-            f"File not found: {path}",
-            ErrorCode.NOT_FOUND
-        )
+        raise FileOperationError(f"File not found: {path}", ErrorCode.NOT_FOUND)
     except PermissionError:
-        raise FileOperationError(
-            f"Permission denied: {path}",
-            ErrorCode.PERMISSION_DENIED
-        )
+        raise FileOperationError(f"Permission denied: {path}", ErrorCode.PERMISSION_DENIED)
     except (OSError, IOError) as e:
-        raise FileOperationError(
-            f"Failed to open file: {e}",
-            ErrorCode.INTERNAL_ERROR
-        )
+        raise FileOperationError(f"Failed to open file: {e}", ErrorCode.INTERNAL_ERROR)
     finally:
         if file_handle:
             try:
@@ -590,11 +474,7 @@ def open_file(
                 pass  # Best effort close
 
 
-def calculate_checksum(
-    path: str,
-    algorithm: str = "sha256",
-    chunk_size: int = 8192
-) -> str:
+def calculate_checksum(path: str, algorithm: str = "sha256", chunk_size: int = 8192) -> str:
     """Calculate file checksum.
 
     Args:
@@ -616,8 +496,7 @@ def calculate_checksum(
             hasher = hashlib.new(algorithm)
         except ValueError:
             raise FileOperationError(
-                f"Unsupported hash algorithm: {algorithm}",
-                ErrorCode.INVALID_INPUT
+                f"Unsupported hash algorithm: {algorithm}", ErrorCode.INVALID_INPUT
             )
 
         # Calculate checksum
@@ -628,20 +507,11 @@ def calculate_checksum(
         return hasher.hexdigest()
 
     except FileNotFoundError:
-        raise FileOperationError(
-            f"File not found: {path}",
-            ErrorCode.NOT_FOUND
-        )
+        raise FileOperationError(f"File not found: {path}", ErrorCode.NOT_FOUND)
     except PermissionError:
-        raise FileOperationError(
-            f"Permission denied: {path}",
-            ErrorCode.PERMISSION_DENIED
-        )
+        raise FileOperationError(f"Permission denied: {path}", ErrorCode.PERMISSION_DENIED)
     except (OSError, IOError) as e:
-        raise FileOperationError(
-            f"Failed to calculate checksum: {e}",
-            ErrorCode.INTERNAL_ERROR
-        )
+        raise FileOperationError(f"Failed to calculate checksum: {e}", ErrorCode.INTERNAL_ERROR)
 
 
 def set_permissions(path: str, mode: int) -> None:
@@ -659,20 +529,11 @@ def set_permissions(path: str, mode: int) -> None:
         os.chmod(path, mode)
 
     except FileNotFoundError:
-        raise FileOperationError(
-            f"File not found: {path}",
-            ErrorCode.NOT_FOUND
-        )
+        raise FileOperationError(f"File not found: {path}", ErrorCode.NOT_FOUND)
     except PermissionError:
-        raise FileOperationError(
-            f"Permission denied: {path}",
-            ErrorCode.PERMISSION_DENIED
-        )
+        raise FileOperationError(f"Permission denied: {path}", ErrorCode.PERMISSION_DENIED)
     except (OSError, IOError) as e:
-        raise FileOperationError(
-            f"Failed to set permissions: {e}",
-            ErrorCode.INTERNAL_ERROR
-        )
+        raise FileOperationError(f"Failed to set permissions: {e}", ErrorCode.INTERNAL_ERROR)
 
 
 def create_symlink(target: str, link_path: str) -> None:
@@ -692,17 +553,8 @@ def create_symlink(target: str, link_path: str) -> None:
         os.symlink(target, link_path)
 
     except FileExistsError:
-        raise FileOperationError(
-            f"Link already exists: {link_path}",
-            ErrorCode.CONFLICT
-        )
+        raise FileOperationError(f"Link already exists: {link_path}", ErrorCode.CONFLICT)
     except PermissionError:
-        raise FileOperationError(
-            f"Permission denied",
-            ErrorCode.PERMISSION_DENIED
-        )
+        raise FileOperationError(f"Permission denied", ErrorCode.PERMISSION_DENIED)
     except (OSError, IOError) as e:
-        raise FileOperationError(
-            f"Failed to create symlink: {e}",
-            ErrorCode.INTERNAL_ERROR
-        )
+        raise FileOperationError(f"Failed to create symlink: {e}", ErrorCode.INTERNAL_ERROR)

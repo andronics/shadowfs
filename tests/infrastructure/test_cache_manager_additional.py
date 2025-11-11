@@ -2,14 +2,15 @@
 """Additional tests for complete CacheManager coverage."""
 
 import threading
+
 import pytest
 
 from shadowfs.infrastructure.cache_manager import (
-    CacheLevel,
-    CacheEntry,
     CacheConfig,
-    LRUCache,
+    CacheEntry,
+    CacheLevel,
     CacheManager,
+    LRUCache,
 )
 
 
@@ -18,11 +19,7 @@ class TestAdditionalCoverage:
 
     def test_lru_cache_with_empty_cache_eviction(self):
         """Test eviction when cache becomes empty."""
-        config = CacheConfig(
-            max_entries=2,
-            max_size_bytes=50,
-            ttl_seconds=1.0
-        )
+        config = CacheConfig(max_entries=2, max_size_bytes=50, ttl_seconds=1.0)
         cache = LRUCache(config)
 
         # Add and remove all entries
@@ -37,11 +34,7 @@ class TestAdditionalCoverage:
 
     def test_remove_entry_nonexistent(self):
         """Test removing non-existent entry."""
-        config = CacheConfig(
-            max_entries=2,
-            max_size_bytes=50,
-            ttl_seconds=1.0
-        )
+        config = CacheConfig(max_entries=2, max_size_bytes=50, ttl_seconds=1.0)
         cache = LRUCache(config)
 
         # Try to remove non-existent entry
@@ -50,11 +43,7 @@ class TestAdditionalCoverage:
 
     def test_evict_when_cache_empty_during_set(self):
         """Test eviction branch when cache becomes empty during set."""
-        config = CacheConfig(
-            max_entries=1,
-            max_size_bytes=10,
-            ttl_seconds=1.0
-        )
+        config = CacheConfig(max_entries=1, max_size_bytes=10, ttl_seconds=1.0)
         cache = LRUCache(config)
 
         # Try to add item larger than cache
@@ -139,11 +128,7 @@ class TestAdditionalCoverage:
 
     def test_eviction_loop_break(self):
         """Test break condition in eviction loop."""
-        config = CacheConfig(
-            max_entries=1,
-            max_size_bytes=100,
-            ttl_seconds=1.0
-        )
+        config = CacheConfig(max_entries=1, max_size_bytes=100, ttl_seconds=1.0)
         cache = LRUCache(config)
 
         # Clear cache to make it empty

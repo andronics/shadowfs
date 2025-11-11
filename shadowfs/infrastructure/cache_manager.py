@@ -18,12 +18,13 @@ Example:
     >>> cache.invalidate_path("path/to/file")
 """
 
-import time
 import threading
+import time
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
+
 from shadowfs.foundation.constants import ErrorCode
 
 
@@ -158,8 +159,10 @@ class LRUCache:
                 return  # Too large to cache
 
             # Evict entries until there's space
-            while (len(self._cache) >= self.config.max_entries or
-                   self._current_size + size > self.config.max_size_bytes):
+            while (
+                len(self._cache) >= self.config.max_entries
+                or self._current_size + size > self.config.max_size_bytes
+            ):
                 if not self._cache:
                     break  # Nothing to evict
                 self._evict_lru()
@@ -281,12 +284,7 @@ class CacheManager:
         self._path_keys: Dict[str, Set[Tuple[CacheLevel, str]]] = {}
         self._path_lock = threading.RLock()
 
-    def get(
-        self,
-        namespace: str,
-        key: str,
-        level: CacheLevel = CacheLevel.L2
-    ) -> Optional[Any]:
+    def get(self, namespace: str, key: str, level: CacheLevel = CacheLevel.L2) -> Optional[Any]:
         """Get value from cache.
 
         Args:
@@ -310,7 +308,7 @@ class CacheManager:
         key: str,
         value: Any,
         size: Optional[int] = None,
-        level: CacheLevel = CacheLevel.L2
+        level: CacheLevel = CacheLevel.L2,
     ) -> None:
         """Set value in cache.
 
@@ -334,12 +332,7 @@ class CacheManager:
         # Track for path-based invalidation
         self._track_path_key(key, level, full_key)
 
-    def invalidate(
-        self,
-        namespace: str,
-        key: str,
-        level: Optional[CacheLevel] = None
-    ) -> bool:
+    def invalidate(self, namespace: str, key: str, level: Optional[CacheLevel] = None) -> bool:
         """Invalidate cache entry.
 
         Args:
@@ -456,7 +449,7 @@ class CacheManager:
         self,
         namespace: str,
         entries: List[Tuple[str, Any, Optional[int]]],
-        level: CacheLevel = CacheLevel.L2
+        level: CacheLevel = CacheLevel.L2,
     ) -> int:
         """Warm up cache with pre-loaded entries.
 
@@ -535,9 +528,7 @@ class CacheManager:
 _global_cache: Optional[CacheManager] = None
 
 
-def get_cache_manager(
-    configs: Optional[Dict[CacheLevel, CacheConfig]] = None
-) -> CacheManager:
+def get_cache_manager(configs: Optional[Dict[CacheLevel, CacheConfig]] = None) -> CacheManager:
     """Get or create global cache manager.
 
     Args:

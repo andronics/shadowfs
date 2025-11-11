@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """Comprehensive tests for the Metrics module."""
 
-import time
 import threading
-from unittest.mock import patch, MagicMock
+import time
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 from shadowfs.infrastructure.metrics import (
-    MetricType,
-    MetricValue,
     Metric,
     MetricsCollector,
+    MetricType,
+    MetricValue,
     get_metrics,
     set_global_metrics,
 )
@@ -68,9 +69,7 @@ class TestMetric:
     def test_metric_creation(self):
         """Test creating a metric."""
         metric = Metric(
-            name="test_metric",
-            metric_type=MetricType.COUNTER,
-            description="Test metric"
+            name="test_metric", metric_type=MetricType.COUNTER, description="Test metric"
         )
         assert metric.name == "test_metric"
         assert metric.metric_type == MetricType.COUNTER
@@ -81,9 +80,7 @@ class TestMetric:
     def test_histogram_default_buckets(self):
         """Test histogram metric gets default buckets."""
         metric = Metric(
-            name="test_histogram",
-            metric_type=MetricType.HISTOGRAM,
-            description="Test histogram"
+            name="test_histogram", metric_type=MetricType.HISTOGRAM, description="Test histogram"
         )
         assert metric.buckets == [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
 
@@ -94,18 +91,14 @@ class TestMetric:
             name="test_histogram",
             metric_type=MetricType.HISTOGRAM,
             description="Test histogram",
-            buckets=custom_buckets
+            buckets=custom_buckets,
         )
         assert metric.buckets == custom_buckets
 
     def test_non_histogram_buckets(self):
         """Test non-histogram metrics don't get buckets."""
         for metric_type in [MetricType.COUNTER, MetricType.GAUGE, MetricType.SUMMARY]:
-            metric = Metric(
-                name="test_metric",
-                metric_type=metric_type,
-                description="Test metric"
-            )
+            metric = Metric(name="test_metric", metric_type=metric_type, description="Test metric")
             assert metric.buckets is None
 
 
@@ -509,16 +502,9 @@ class TestPrometheusExport:
         """Test aggregating histogram with empty labels."""
         collector = MetricsCollector()
         metric = Metric(
-            name="test",
-            metric_type=MetricType.HISTOGRAM,
-            description="Test",
-            buckets=[0.1, 1.0]
+            name="test", metric_type=MetricType.HISTOGRAM, description="Test", buckets=[0.1, 1.0]
         )
-        metric.values = [
-            MetricValue(value=0.05),
-            MetricValue(value=0.5),
-            MetricValue(value=1.5)
-        ]
+        metric.values = [MetricValue(value=0.05), MetricValue(value=0.5), MetricValue(value=1.5)]
 
         result = collector._aggregate_histogram(metric)
         assert len(result) == 1
@@ -531,10 +517,7 @@ class TestPrometheusExport:
         """Test aggregating histogram with different label sets."""
         collector = MetricsCollector()
         metric = Metric(
-            name="test",
-            metric_type=MetricType.HISTOGRAM,
-            description="Test",
-            buckets=[0.1, 1.0]
+            name="test", metric_type=MetricType.HISTOGRAM, description="Test", buckets=[0.1, 1.0]
         )
         metric.values = [
             MetricValue(value=0.05, labels={"env": "prod"}),
@@ -548,11 +531,7 @@ class TestPrometheusExport:
     def test_aggregate_summary_empty_values(self):
         """Test aggregating summary with no values."""
         collector = MetricsCollector()
-        metric = Metric(
-            name="test",
-            metric_type=MetricType.SUMMARY,
-            description="Test"
-        )
+        metric = Metric(name="test", metric_type=MetricType.SUMMARY, description="Test")
 
         result = collector._aggregate_summary(metric)
         assert len(result) == 0
@@ -560,11 +539,7 @@ class TestPrometheusExport:
     def test_aggregate_summary_single_value(self):
         """Test aggregating summary with single value."""
         collector = MetricsCollector()
-        metric = Metric(
-            name="test",
-            metric_type=MetricType.SUMMARY,
-            description="Test"
-        )
+        metric = Metric(name="test", metric_type=MetricType.SUMMARY, description="Test")
         metric.values = [MetricValue(value=1.0)]
 
         result = collector._aggregate_summary(metric)
@@ -605,10 +580,7 @@ class TestThreadSafety:
 
         def worker(label_value):
             for _ in range(100):
-                collector.increment_counter(
-                    "test_counter",
-                    labels={"thread": str(label_value)}
-                )
+                collector.increment_counter("test_counter", labels={"thread": str(label_value)})
 
         threads = []
         for i in range(5):

@@ -2,9 +2,11 @@
 """Final tests to maximize validators.py coverage."""
 
 import re
+
 import pytest
-from shadowfs.foundation.validators import *
+
 from shadowfs.foundation.constants import ErrorCode, Limits
+from shadowfs.foundation.validators import *
 
 
 # Test all remaining uncovered lines

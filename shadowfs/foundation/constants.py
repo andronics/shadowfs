@@ -5,10 +5,9 @@ This module provides system-wide constants, error codes, and type definitions
 following Meta-Architecture v1.0.0 principles.
 """
 from dataclasses import dataclass
-from enum import IntEnum, Enum
-from typing import TypeAlias, NewType, Optional
+from enum import Enum, IntEnum
 from pathlib import Path as PathType
-
+from typing import NewType, Optional, TypeAlias
 
 # Version information
 SHADOWFS_VERSION = "1.0.0"
@@ -19,16 +18,16 @@ SHADOWFS_API_VERSION = 1
 class ErrorCode(IntEnum):
     """Standardized error codes for ShadowFS operations."""
 
-    SUCCESS = 0              # Operation completed successfully
-    INVALID_INPUT = 1        # Bad path, invalid configuration
-    NOT_FOUND = 2           # File or resource doesn't exist
-    PERMISSION_DENIED = 3    # Insufficient permissions
-    CONFLICT = 4            # Resource conflict (locked, exists)
-    DEPENDENCY_ERROR = 5     # Missing dependency (transform library)
-    INTERNAL_ERROR = 6       # Bug in ShadowFS
-    TIMEOUT = 7             # Operation timed out
-    RATE_LIMITED = 8        # Too many operations
-    DEGRADED = 9            # Running with reduced functionality
+    SUCCESS = 0  # Operation completed successfully
+    INVALID_INPUT = 1  # Bad path, invalid configuration
+    NOT_FOUND = 2  # File or resource doesn't exist
+    PERMISSION_DENIED = 3  # Insufficient permissions
+    CONFLICT = 4  # Resource conflict (locked, exists)
+    DEPENDENCY_ERROR = 5  # Missing dependency (transform library)
+    INTERNAL_ERROR = 6  # Bug in ShadowFS
+    TIMEOUT = 7  # Operation timed out
+    RATE_LIMITED = 8  # Too many operations
+    DEGRADED = 9  # Running with reduced functionality
 
 
 # Type aliases for clarity
@@ -39,10 +38,10 @@ FileContent: TypeAlias = bytes
 Pattern: TypeAlias = str
 
 # NewTypes for type safety
-SourcePath = NewType('SourcePath', str)
-MountPath = NewType('MountPath', str)
-LayerName = NewType('LayerName', str)
-TransformName = NewType('TransformName', str)
+SourcePath = NewType("SourcePath", str)
+MountPath = NewType("MountPath", str)
+LayerName = NewType("LayerName", str)
+TransformName = NewType("TransformName", str)
 
 
 # File attributes matching os.stat_result
@@ -50,33 +49,36 @@ TransformName = NewType('TransformName', str)
 class FileAttributes:
     """File attributes matching os.stat_result structure."""
 
-    st_mode: int      # File mode (type and permissions)
-    st_ino: int       # Inode number
-    st_dev: int       # Device ID
-    st_nlink: int     # Number of hard links
-    st_uid: int       # User ID
-    st_gid: int       # Group ID
-    st_size: int      # File size in bytes
-    st_atime: float   # Access time
-    st_mtime: float   # Modification time
-    st_ctime: float   # Status change time
+    st_mode: int  # File mode (type and permissions)
+    st_ino: int  # Inode number
+    st_dev: int  # Device ID
+    st_nlink: int  # Number of hard links
+    st_uid: int  # User ID
+    st_gid: int  # Group ID
+    st_size: int  # File size in bytes
+    st_atime: float  # Access time
+    st_mtime: float  # Modification time
+    st_ctime: float  # Status change time
 
     @property
     def is_dir(self) -> bool:
         """Check if this is a directory."""
         import stat
+
         return stat.S_ISDIR(self.st_mode)
 
     @property
     def is_file(self) -> bool:
         """Check if this is a regular file."""
         import stat
+
         return stat.S_ISREG(self.st_mode)
 
     @property
     def is_symlink(self) -> bool:
         """Check if this is a symbolic link."""
         import stat
+
         return stat.S_ISLNK(self.st_mode)
 
 

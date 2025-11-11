@@ -2,27 +2,28 @@
 """Unit tests for shadowfs.foundation.validators module."""
 
 import re
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 from shadowfs.foundation.validators import (
     ValidationError,
-    validate_config,
-    validate_source_config,
-    validate_rule_config,
-    validate_transform_config,
-    validate_virtual_layer_config,
     validate_cache_config,
+    validate_config,
+    validate_file_size,
+    validate_glob,
+    validate_layer_name,
     validate_path,
     validate_pattern,
-    validate_layer_name,
-    validate_version,
-    validate_port,
-    validate_file_size,
     validate_permissions,
+    validate_port,
     validate_regex,
-    validate_glob,
+    validate_rule_config,
+    validate_source_config,
     validate_timeout,
+    validate_transform_config,
+    validate_version,
+    validate_virtual_layer_config,
 )
 
 
@@ -37,6 +38,7 @@ class TestValidationError:
     def test_validation_error_with_error_code(self):
         """Test ValidationError with error code."""
         from shadowfs.foundation.constants import ErrorCode
+
         error = ValidationError("Invalid value", error_code=ErrorCode.INVALID_INPUT)
         assert error.error_code == ErrorCode.INVALID_INPUT
         assert str(error) == "Invalid value"
@@ -47,32 +49,18 @@ class TestValidateConfig:
 
     def test_valid_minimal_config(self):
         """Test minimal valid configuration."""
-        config = {
-            "version": "1.0",
-            "sources": [{"path": "/data"}]
-        }
+        config = {"version": "1.0", "sources": [{"path": "/data"}]}
         assert validate_config(config) == True
 
     def test_valid_full_config(self):
         """Test fully populated valid configuration."""
         config = {
             "version": "1.0",
-            "sources": [
-                {"path": "/data", "priority": 1, "readonly": True}
-            ],
-            "rules": [
-                {"type": "exclude", "pattern": "*.tmp"}
-            ],
-            "transforms": [
-                {"type": "compress", "pattern": "*.txt", "algorithm": "gzip"}
-            ],
-            "virtual_layers": [
-                {"name": "by-type", "type": "classifier"}
-            ],
-            "cache": {
-                "enabled": True,
-                "max_size_mb": 512
-            }
+            "sources": [{"path": "/data", "priority": 1, "readonly": True}],
+            "rules": [{"type": "exclude", "pattern": "*.tmp"}],
+            "transforms": [{"type": "compress", "pattern": "*.txt", "algorithm": "gzip"}],
+            "virtual_layers": [{"name": "by-type", "type": "classifier"}],
+            "cache": {"enabled": True, "max_size_mb": 512},
         }
         assert validate_config(config) == True
 
@@ -95,20 +83,13 @@ class TestValidateConfig:
 
     def test_invalid_config_bad_source(self):
         """Test config with invalid source."""
-        config = {
-            "version": "1.0",
-            "sources": [{"invalid": "field"}]
-        }
+        config = {"version": "1.0", "sources": [{"invalid": "field"}]}
         with pytest.raises(ValidationError):
             validate_config(config)
 
     def test_invalid_config_bad_rule(self):
         """Test config with invalid rule."""
-        config = {
-            "version": "1.0",
-            "sources": [{"path": "/data"}],
-            "rules": [{"invalid": "rule"}]
-        }
+        config = {"version": "1.0", "sources": [{"path": "/data"}], "rules": [{"invalid": "rule"}]}
         with pytest.raises(ValidationError):
             validate_config(config)
 
@@ -117,7 +98,7 @@ class TestValidateConfig:
         config = {
             "version": "1.0",
             "sources": [{"path": "/data"}],
-            "transforms": [{"invalid": "transform"}]
+            "transforms": [{"invalid": "transform"}],
         }
         with pytest.raises(ValidationError):
             validate_config(config)
@@ -127,18 +108,14 @@ class TestValidateConfig:
         config = {
             "version": "1.0",
             "sources": [{"path": "/data"}],
-            "virtual_layers": [{"invalid": "layer"}]
+            "virtual_layers": [{"invalid": "layer"}],
         }
         with pytest.raises(ValidationError):
             validate_config(config)
 
     def test_invalid_config_bad_cache(self):
         """Test config with invalid cache settings."""
-        config = {
-            "version": "1.0",
-            "sources": [{"path": "/data"}],
-            "cache": {"invalid": "cache"}
-        }
+        config = {"version": "1.0", "sources": [{"path": "/data"}], "cache": {"invalid": "cache"}}
         with pytest.raises(ValidationError):
             validate_config(config)
 
@@ -153,12 +130,7 @@ class TestValidateSourceConfig:
 
     def test_valid_full_source(self):
         """Test fully populated source."""
-        source = {
-            "path": "/data",
-            "priority": 10,
-            "readonly": False,
-            "name": "main-data"
-        }
+        source = {"path": "/data", "priority": 10, "readonly": False, "name": "main-data"}
         assert validate_source_config(source) == True
 
     def test_invalid_source_missing_path(self):
@@ -204,7 +176,7 @@ class TestValidateRuleConfig:
             "pattern": "*.py",
             "name": "Python files",
             "priority": 100,
-            "conditions": {"min_size": 1024}
+            "conditions": {"min_size": 1024},
         }
         assert validate_rule_config(rule) == True
 
@@ -259,7 +231,7 @@ class TestValidateTransformConfig:
             "to": "html",
             "pattern": "*.md",
             "name": "MD to HTML",
-            "options": {"theme": "github"}
+            "options": {"theme": "github"},
         }
         assert validate_transform_config(transform) == True
 
@@ -306,7 +278,7 @@ class TestValidateVirtualLayerConfig:
             "type": "date",
             "date_field": "mtime",
             "format": "%Y/%m/%d",
-            "enabled": True
+            "enabled": True,
         }
         assert validate_virtual_layer_config(layer) == True
 
@@ -348,12 +320,7 @@ class TestValidateCacheConfig:
 
     def test_valid_full_cache(self):
         """Test fully populated cache config."""
-        cache = {
-            "enabled": True,
-            "max_size_mb": 1024,
-            "ttl_seconds": 300,
-            "eviction_policy": "lru"
-        }
+        cache = {"enabled": True, "max_size_mb": 1024, "ttl_seconds": 300, "eviction_policy": "lru"}
         assert validate_cache_config(cache) == True
 
     def test_valid_disabled_cache(self):

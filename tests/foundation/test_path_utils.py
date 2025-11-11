@@ -2,30 +2,30 @@
 import os
 import tempfile
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from shadowfs.foundation.constants import ErrorCode, Limits
 from shadowfs.foundation.path_utils import (
     PathError,
-    normalize_path,
-    is_safe_path,
-    join_paths,
-    split_path,
-    get_parent_path,
-    get_filename,
-    get_extension,
-    resolve_symlinks,
-    validate_filename,
-    is_absolute_path,
-    make_relative,
-    parse_virtual_path,
-    is_hidden_file,
-    list_path_components,
     common_path_prefix,
     ensure_trailing_slash,
+    get_extension,
+    get_filename,
+    get_parent_path,
+    is_absolute_path,
+    is_hidden_file,
+    is_safe_path,
+    join_paths,
+    list_path_components,
+    make_relative,
+    normalize_path,
+    parse_virtual_path,
     remove_trailing_slash,
+    resolve_symlinks,
+    split_path,
+    validate_filename,
 )
 
 
@@ -122,7 +122,9 @@ class TestIsSafePath:
 
     def test_invalid_base(self):
         """Invalid base should return False."""
-        with patch("shadowfs.foundation.path_utils.normalize_path", side_effect=PathError("Invalid")):
+        with patch(
+            "shadowfs.foundation.path_utils.normalize_path", side_effect=PathError("Invalid")
+        ):
             assert not is_safe_path("/invalid", "test.txt")
 
 
@@ -176,7 +178,9 @@ class TestSplitPath:
 
     def test_split_virtual_path(self):
         """Virtual paths should split without normalization."""
-        with patch("shadowfs.foundation.path_utils.normalize_path", side_effect=PathError("Virtual")):
+        with patch(
+            "shadowfs.foundation.path_utils.normalize_path", side_effect=PathError("Virtual")
+        ):
             dir_part, file_part = split_path("virtual/path.txt")
             assert dir_part == "virtual"
             assert file_part == "path.txt"
@@ -525,7 +529,7 @@ class TestCommonPathPrefix:
         paths = [
             "/home/user/docs/file1.txt",
             "/home/user/docs/file2.txt",
-            "/home/user/docs/subdir/file3.txt"
+            "/home/user/docs/subdir/file3.txt",
         ]
         prefix = common_path_prefix(paths)
         assert prefix.endswith("docs")
@@ -547,7 +551,9 @@ class TestCommonPathPrefix:
 
     def test_common_prefix_error(self):
         """Errors should return empty string or single path."""
-        with patch("shadowfs.foundation.path_utils.normalize_path", side_effect=PathError("Invalid")):
+        with patch(
+            "shadowfs.foundation.path_utils.normalize_path", side_effect=PathError("Invalid")
+        ):
             # When normalization fails, it returns the input path
             result = common_path_prefix(["/invalid"])
             # May return empty or the path itself depending on the error
@@ -556,9 +562,9 @@ class TestCommonPathPrefix:
     def test_common_prefix_fallback(self):
         """Test fallback to commonprefix for older Python."""
         # Temporarily remove commonpath to test fallback
-        original_commonpath = getattr(os.path, 'commonpath', None)
-        if hasattr(os.path, 'commonpath'):
-            delattr(os.path, 'commonpath')
+        original_commonpath = getattr(os.path, "commonpath", None)
+        if hasattr(os.path, "commonpath"):
+            delattr(os.path, "commonpath")
 
         try:
             paths = ["/home/user/file1", "/home/user/file2"]

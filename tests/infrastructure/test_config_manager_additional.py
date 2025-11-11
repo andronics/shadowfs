@@ -2,14 +2,12 @@
 """Additional tests for complete ConfigManager coverage."""
 
 import os
-import time
 import tempfile
+import time
+
 import pytest
 
-from shadowfs.infrastructure.config_manager import (
-    ConfigSource,
-    ConfigManager,
-)
+from shadowfs.infrastructure.config_manager import ConfigManager, ConfigSource
 
 
 class TestAdditionalCoverage:
@@ -18,12 +16,12 @@ class TestAdditionalCoverage:
     def test_load_file_system_config_path(self):
         """Test loading from system config path."""
         # Create temp file that looks like system config
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False, dir='/tmp') as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False, dir="/tmp") as f:
             # Create a path that contains /etc/shadowfs
-            temp_dir = tempfile.mkdtemp(prefix='etc_shadowfs_test_')
-            config_path = os.path.join(temp_dir, 'config.yaml')
+            temp_dir = tempfile.mkdtemp(prefix="etc_shadowfs_test_")
+            config_path = os.path.join(temp_dir, "config.yaml")
 
-            with open(config_path, 'w') as cf:
+            with open(config_path, "w") as cf:
                 cf.write("shadowfs:\n  test: system_value\n")
 
             try:
@@ -54,7 +52,7 @@ class TestAdditionalCoverage:
         """Test that watch_file restarts thread if it died."""
         manager = ConfigManager()
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write("shadowfs:\n  test: value\n")
             temp_path = f.name
 
@@ -92,10 +90,10 @@ class TestAdditionalCoverage:
         manager = ConfigManager()
 
         # Create file with /etc/shadowfs in path
-        temp_dir = tempfile.mkdtemp(prefix='etc_shadowfs_')
-        config_path = os.path.join(temp_dir, 'config.yaml')
+        temp_dir = tempfile.mkdtemp(prefix="etc_shadowfs_")
+        config_path = os.path.join(temp_dir, "config.yaml")
 
-        with open(config_path, 'w') as f:
+        with open(config_path, "w") as f:
             f.write("shadowfs:\n  test: initial\n")
 
         try:
@@ -105,7 +103,7 @@ class TestAdditionalCoverage:
             time.sleep(0.2)
 
             # Modify file
-            with open(config_path, 'w') as f:
+            with open(config_path, "w") as f:
                 f.write("shadowfs:\n  test: modified\n")
 
             time.sleep(0.3)
@@ -125,7 +123,7 @@ class TestAdditionalCoverage:
         """Test watch loop handles file stat errors."""
         manager = ConfigManager()
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write("shadowfs:\n  test: value\n")
             temp_path = f.name
 
@@ -158,10 +156,7 @@ class TestAdditionalCoverage:
         import os
         from unittest.mock import patch
 
-        with patch.dict(os.environ, {
-            "OTHER_VAR": "value",
-            "RANDOM_KEY": "test"
-        }):
+        with patch.dict(os.environ, {"OTHER_VAR": "value", "RANDOM_KEY": "test"}):
             manager = ConfigManager()
 
             # These should not be in config
@@ -172,7 +167,7 @@ class TestAdditionalCoverage:
         """Test stop_watching with timeout."""
         manager = ConfigManager()
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write("shadowfs:\n  test: value\n")
             temp_path = f.name
 
@@ -196,23 +191,17 @@ class TestAdditionalCoverage:
         """Test schema validation with optional fields."""
         manager = ConfigManager()
 
-        manager.load_dict({
-            "shadowfs": {
-                "cache": {
-                    "enabled": True
+        manager.load_dict(
+            {
+                "shadowfs": {
+                    "cache": {"enabled": True}
+                    # max_size_mb is optional and not present
                 }
-                # max_size_mb is optional and not present
-            }
-        }, ConfigSource.RUNTIME)
+            },
+            ConfigSource.RUNTIME,
+        )
 
-        schema = {
-            "shadowfs": {
-                "cache": {
-                    "enabled": bool,
-                    "max_size_mb": int  # Optional field
-                }
-            }
-        }
+        schema = {"shadowfs": {"cache": {"enabled": bool, "max_size_mb": int}}}  # Optional field
 
         # Should pass validation even though max_size_mb is missing
         assert manager.validate_schema(schema) is True
@@ -240,12 +229,8 @@ class TestAdditionalCoverage:
         """Test deep merge when override value is not dict."""
         manager = ConfigManager()
 
-        base = {
-            "a": {"b": 1}
-        }
-        override = {
-            "a": "string_value"  # Overrides entire dict with string
-        }
+        base = {"a": {"b": 1}}
+        override = {"a": "string_value"}  # Overrides entire dict with string
 
         result = manager._deep_merge(base, override)
         assert result["a"] == "string_value"

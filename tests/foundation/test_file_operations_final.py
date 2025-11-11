@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
 """Final tests to achieve 100% coverage for file_operations.py."""
 
+import errno
 import os
 import tempfile
-import pytest
-from unittest.mock import patch, MagicMock, mock_open
-import errno
+from unittest.mock import MagicMock, mock_open, patch
 
+import pytest
+
+from shadowfs.foundation.constants import ErrorCode
 from shadowfs.foundation.file_operations import (
     FileOperationError,
-    write_file,
-    delete_file,
     create_directory,
+    delete_file,
     open_file,
+    write_file,
 )
-from shadowfs.foundation.constants import ErrorCode
 
 
 class TestFinalCoverage:
@@ -32,7 +33,7 @@ class TestFinalCoverage:
             write_file(test_file, b"content", create_dirs=True)
 
             # Verify file was written
-            with open(test_file, 'rb') as f:
+            with open(test_file, "rb") as f:
                 assert f.read() == b"content"
 
     def test_delete_file_unsafe_empty_path(self):
@@ -75,9 +76,9 @@ class TestFinalCoverage:
         mock_file = MagicMock()
         mock_file.close.side_effect = OSError("Close failed")
 
-        with patch('builtins.open', return_value=mock_file):
+        with patch("builtins.open", return_value=mock_file):
             # This should not raise even though close fails
-            with open_file("/fake/path", 'r') as f:
+            with open_file("/fake/path", "r") as f:
                 pass  # File opened and used
 
             # Verify close was attempted

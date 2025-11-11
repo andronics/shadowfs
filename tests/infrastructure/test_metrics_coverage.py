@@ -1,15 +1,11 @@
 #!/usr/bin/env python3
 """Final tests to achieve 100% metrics coverage."""
 
-import pytest
 import threading
 
-from shadowfs.infrastructure.metrics import (
-    MetricType,
-    MetricValue,
-    Metric,
-    MetricsCollector,
-)
+import pytest
+
+from shadowfs.infrastructure.metrics import Metric, MetricsCollector, MetricType, MetricValue
 
 
 class TestBranchCoverage:
@@ -46,6 +42,7 @@ class TestBranchCoverage:
         initial_timestamp = collector._metrics["counter"].values[0].timestamp
 
         import time
+
         time.sleep(0.01)  # Small delay to ensure timestamp changes
 
         # Second increment should update existing value and timestamp
@@ -60,10 +57,7 @@ class TestBranchCoverage:
         """Test branch at line 424->423 (empty label_key in histogram)."""
         collector = MetricsCollector()
         metric = Metric(
-            name="test",
-            metric_type=MetricType.HISTOGRAM,
-            description="Test",
-            buckets=[0.1, 1.0]
+            name="test", metric_type=MetricType.HISTOGRAM, description="Test", buckets=[0.1, 1.0]
         )
 
         # Add value with no labels (empty label_key)
@@ -77,11 +71,7 @@ class TestBranchCoverage:
     def test_aggregate_summary_empty_label_key(self):
         """Test branch at line 469->468 (empty label_key in summary)."""
         collector = MetricsCollector()
-        metric = Metric(
-            name="test",
-            metric_type=MetricType.SUMMARY,
-            description="Test"
-        )
+        metric = Metric(name="test", metric_type=MetricType.SUMMARY, description="Test")
 
         # Add value with no labels (empty label_key)
         metric.values = [MetricValue(value=0.5, labels={})]
@@ -94,11 +84,7 @@ class TestBranchCoverage:
     def test_aggregate_summary_quantile_out_of_range(self):
         """Test branch at line 479->477 (idx >= len for quantile)."""
         collector = MetricsCollector()
-        metric = Metric(
-            name="test",
-            metric_type=MetricType.SUMMARY,
-            description="Test"
-        )
+        metric = Metric(name="test", metric_type=MetricType.SUMMARY, description="Test")
 
         # With no values, quantile indices will be out of range
         # Create scenario where we group but have empty values for that group
@@ -126,10 +112,7 @@ class TestBranchCoverage:
         """Test branch at line 424 when label_key has part without '='."""
         collector = MetricsCollector()
         metric = Metric(
-            name="test",
-            metric_type=MetricType.HISTOGRAM,
-            description="Test",
-            buckets=[0.1, 1.0]
+            name="test", metric_type=MetricType.HISTOGRAM, description="Test", buckets=[0.1, 1.0]
         )
 
         # Directly manipulate to create edge case
@@ -164,11 +147,7 @@ class TestBranchCoverage:
     def test_aggregate_summary_label_without_equals(self):
         """Test branch at line 469 when label_key has part without '='."""
         collector = MetricsCollector()
-        metric = Metric(
-            name="test",
-            metric_type=MetricType.SUMMARY,
-            description="Test"
-        )
+        metric = Metric(name="test", metric_type=MetricType.SUMMARY, description="Test")
 
         # Add values with labels
         metric.values = [

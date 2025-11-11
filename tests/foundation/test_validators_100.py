@@ -2,29 +2,30 @@
 """Tests to achieve 100% coverage for validators.py - focused on missing lines."""
 
 import re
-import pytest
 from unittest.mock import patch
 
+import pytest
+
+from shadowfs.foundation.constants import ErrorCode, Limits
 from shadowfs.foundation.validators import (
     ValidationError,
-    validate_config,
-    validate_source_config,
-    validate_rule_config,
-    validate_transform_config,
-    validate_virtual_layer_config,
     validate_cache_config,
+    validate_config,
+    validate_file_size,
+    validate_glob,
+    validate_layer_name,
     validate_path,
     validate_pattern,
-    validate_layer_name,
-    validate_version,
-    validate_port,
-    validate_file_size,
     validate_permissions,
+    validate_port,
     validate_regex,
-    validate_glob,
+    validate_rule_config,
+    validate_source_config,
     validate_timeout,
+    validate_transform_config,
+    validate_version,
+    validate_virtual_layer_config,
 )
-from shadowfs.foundation.constants import ErrorCode, Limits
 
 
 class TestMissingCoverage:
@@ -118,7 +119,6 @@ class TestMissingCoverage:
         layer = {"name": "invalid/name", "type": "classifier"}
         with pytest.raises(ValidationError):
             validate_virtual_layer_config(layer)
-
 
     # Lines 286, 295-306 - cache validation
     def test_cache_size_not_int(self):

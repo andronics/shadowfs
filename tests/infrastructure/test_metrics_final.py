@@ -2,14 +2,10 @@
 """Final tests to complete 100% metrics coverage."""
 
 import time
+
 import pytest
 
-from shadowfs.infrastructure.metrics import (
-    MetricType,
-    MetricValue,
-    Metric,
-    MetricsCollector,
-)
+from shadowfs.infrastructure.metrics import Metric, MetricsCollector, MetricType, MetricValue
 
 
 class TestFinalBranchCoverage:
@@ -84,11 +80,7 @@ class TestFinalBranchCoverage:
     def test_aggregate_summary_quantile_boundary(self):
         """Test quantile index boundary condition (line 479->477)."""
         collector = MetricsCollector()
-        metric = Metric(
-            name="test",
-            metric_type=MetricType.SUMMARY,
-            description="Test"
-        )
+        metric = Metric(name="test", metric_type=MetricType.SUMMARY, description="Test")
 
         # With 0 values, all quantile calculations skip (empty sorted_values)
         metric.values = []
@@ -142,16 +134,19 @@ class TestFinalBranchCoverage:
         # Export should handle large datasets
         output = collector.export_prometheus()
         assert "shadowfs_large_summary" in output
-        assert "shadowfs_large_summary_count{size=\"large\"} 1000" in output
+        assert 'shadowfs_large_summary_count{size="large"} 1000' in output
 
     def test_concurrent_registration(self):
         """Test concurrent metric registration to ensure thread safety."""
         import threading
+
         collector = MetricsCollector()
 
         def register_histogram():
             # All threads try to register the same histogram
-            collector.register_histogram("concurrent_hist", "Concurrent test", buckets=[0.1, 0.5, 1.0])
+            collector.register_histogram(
+                "concurrent_hist", "Concurrent test", buckets=[0.1, 0.5, 1.0]
+            )
 
         threads = []
         for _ in range(10):
