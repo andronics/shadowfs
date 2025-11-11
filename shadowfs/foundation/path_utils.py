@@ -1,0 +1,493 @@
+"""
+ShadowFS Foundation: Path Utilities
+
+This module provides secure path operations including normalization,
+validation, traversal prevention, and safe path resolution.
+
+Following Meta-Architecture v1.0.0 principles.
+"""
+import os
+from pathlib import Path
+from typing import Optional, List, Tuple
+from functools import lru_cache
+
+from shadowfs.foundation.constants import (
+    ErrorCode,
+    FilePath,
+    VirtualPath,
+    RealPath,
+    Limits,
+)
+
+
+class PathError(Exception):
+    """Base exception for path-related errors."""
+
+    def __init__(self, message: str, error_code: ErrorCode = ErrorCode.INVALID_INPUT):
+        """Initialize PathError.
+
+        Args:
+            message: Error message
+            error_code: Associated error code
+        """
+        super().__init__(message)
+        self.error_code = error_code
+
+
+def normalize_path(path: str) -> str:
+    """Normalize a path to canonical form.
+
+    Performs:
+    - Resolves . and .. components
+    - Removes duplicate slashes
+    - Removes trailing slashes (except root)
+    - Expands ~ to home directory
+
+    Args:
+        path: Path to normalize
+
+    Returns:
+        Normalized path string
+
+    Raises:
+        PathError: If path is invalid
+    """
+    if not path:
+        raise PathError("Path cannot be empty", ErrorCode.INVALID_INPUT)
+
+    if len(path) > Limits.MAX_PATH_LENGTH:
+        raise PathError(
+            f"Path exceeds maximum length ({Limits.MAX_PATH_LENGTH})",
+            ErrorCode.INVALID_INPUT
+        )
+
+    # Expand home directory
+    if path.startswith("~"):
+        path = os.path.expanduser(path)
+
+    # Use pathlib for normalization
+    try:
+        normalized = str(Path(path).resolve())
+    except (OSError, ValueError) as e:
+        raise PathError(f"Invalid path: {e}", ErrorCode.INVALID_INPUT)
+
+    return normalized
+
+
+def is_safe_path(base: str, path: str, follow_symlinks: bool = False) -> bool:
+    """Check if path is safely within base directory.
+
+    Prevents path traversal attacks by ensuring the resolved
+    path remains within the base directory.
+
+    Args:
+        base: Base directory path
+        path: Path to check
+        follow_symlinks: Whether to follow symbolic links
+
+    Returns:
+        True if path is safe, False otherwise
+    """
+    try:
+        base = normalize_path(base)
+
+        if follow_symlinks:
+            # Resolve symlinks
+            real_base = os.path.realpath(base)
+            real_path = os.path.realpath(os.path.join(base, path))
+        else:
+            # Don't resolve symlinks, just normalize
+            real_base = os.path.abspath(base)
+            real_path = os.path.abspath(os.path.join(base, path))
+
+        # Check if path is within base
+        return real_path.startswith(real_base + os.sep) or real_path == real_base
+    except (OSError, PathError):
+        return False
+
+
+def join_paths(*paths: str) -> str:
+    """Safely join path components.
+
+    Args:
+        *paths: Path components to join
+
+    Returns:
+        Joined path
+
+    Raises:
+        PathError: If resulting path is invalid
+    """
+    if not paths:
+        raise PathError("No paths provided", ErrorCode.INVALID_INPUT)
+
+    # Filter out empty components
+    paths = [p for p in paths if p]
+    if not paths:
+        raise PathError("All paths are empty", ErrorCode.INVALID_INPUT)
+
+    try:
+        joined = os.path.join(*paths)
+        return normalize_path(joined)
+    except (OSError, PathError) as e:
+        raise PathError(f"Failed to join paths: {e}", ErrorCode.INVALID_INPUT)
+
+
+def split_path(path: str) -> Tuple[str, str]:
+    """Split path into directory and filename components.
+
+    Args:
+        path: Path to split
+
+    Returns:
+        Tuple of (directory, filename)
+
+    Raises:
+        PathError: If path is invalid
+    """
+    if not path:
+        raise PathError("Path cannot be empty", ErrorCode.INVALID_INPUT)
+
+    try:
+        normalized = normalize_path(path)
+        return os.path.split(normalized)
+    except PathError:
+        # Try without normalization for virtual paths
+        return os.path.split(path)
+
+
+def get_parent_path(path: str) -> str:
+    """Get parent directory of path.
+
+    Args:
+        path: Path to get parent of
+
+    Returns:
+        Parent directory path
+
+    Raises:
+        PathError: If path is invalid or has no parent
+    """
+    if not path:
+        raise PathError("Path cannot be empty", ErrorCode.INVALID_INPUT)
+
+    directory, _ = split_path(path)
+    if not directory or directory == path:
+        raise PathError("Path has no parent", ErrorCode.INVALID_INPUT)
+
+    return directory
+
+
+def get_filename(path: str) -> str:
+    """Extract filename from path.
+
+    Args:
+        path: Path to extract filename from
+
+    Returns:
+        Filename component
+
+    Raises:
+        PathError: If path is invalid
+    """
+    if not path:
+        raise PathError("Path cannot be empty", ErrorCode.INVALID_INPUT)
+
+    _, filename = split_path(path)
+
+    if len(filename) > Limits.MAX_FILENAME_LENGTH:
+        raise PathError(
+            f"Filename exceeds maximum length ({Limits.MAX_FILENAME_LENGTH})",
+            ErrorCode.INVALID_INPUT
+        )
+
+    return filename
+
+
+def get_extension(path: str) -> str:
+    """Get file extension from path.
+
+    Args:
+        path: Path to get extension from
+
+    Returns:
+        File extension including dot (e.g., '.txt'), empty string if no extension
+    """
+    filename = get_filename(path)
+    _, ext = os.path.splitext(filename)
+    return ext
+
+
+def resolve_symlinks(path: str, max_depth: int = None) -> str:
+    """Resolve symbolic links in path.
+
+    Args:
+        path: Path potentially containing symlinks
+        max_depth: Maximum symlink depth to follow (default: Limits.MAX_SYMLINK_DEPTH)
+
+    Returns:
+        Resolved real path
+
+    Raises:
+        PathError: If symlink depth exceeded or resolution fails
+    """
+    if max_depth is None:
+        max_depth = Limits.MAX_SYMLINK_DEPTH
+
+    if not path:
+        raise PathError("Path cannot be empty", ErrorCode.INVALID_INPUT)
+
+    try:
+        # Track visited paths to detect loops
+        visited = set()
+        current = path
+        depth = 0
+
+        while os.path.islink(current):
+            if depth >= max_depth:
+                raise PathError(
+                    f"Symlink depth exceeds maximum ({max_depth})",
+                    ErrorCode.INVALID_INPUT
+                )
+
+            if current in visited:
+                raise PathError(
+                    "Circular symlink detected",
+                    ErrorCode.INVALID_INPUT
+                )
+
+            visited.add(current)
+            current = os.readlink(current)
+
+            # Handle relative symlinks
+            if not os.path.isabs(current):
+                current = os.path.join(os.path.dirname(path), current)
+
+            depth += 1
+
+        return normalize_path(current)
+
+    except OSError as e:
+        raise PathError(f"Failed to resolve symlinks: {e}", ErrorCode.INVALID_INPUT)
+
+
+def validate_filename(filename: str) -> bool:
+    """Validate that filename is safe and valid.
+
+    Checks:
+    - Not empty
+    - No path separators
+    - No null bytes
+    - Within length limits
+    - Not a reserved name (., ..)
+
+    Args:
+        filename: Filename to validate
+
+    Returns:
+        True if valid, False otherwise
+    """
+    if not filename:
+        return False
+
+    # Check length
+    if len(filename) > Limits.MAX_FILENAME_LENGTH:
+        return False
+
+    # Check for path separators (both Unix and Windows)
+    if os.sep in filename:
+        return False
+    if '/' in filename or '\\' in filename:  # Explicitly check both
+        return False
+
+    # Check for null bytes
+    if '\0' in filename:
+        return False
+
+    # Check for reserved names
+    if filename in ('.', '..'):
+        return False
+
+    # Check for control characters
+    if any(ord(c) < 32 for c in filename):
+        return False
+
+    return True
+
+
+def is_absolute_path(path: str) -> bool:
+    """Check if path is absolute.
+
+    Args:
+        path: Path to check
+
+    Returns:
+        True if path is absolute, False otherwise
+    """
+    if not path:
+        return False
+    return os.path.isabs(path)
+
+
+def make_relative(base: str, path: str) -> str:
+    """Make path relative to base directory.
+
+    Args:
+        base: Base directory
+        path: Path to make relative
+
+    Returns:
+        Relative path
+
+    Raises:
+        PathError: If path is not within base
+    """
+    if not base or not path:
+        raise PathError("Base and path cannot be empty", ErrorCode.INVALID_INPUT)
+
+    try:
+        base = normalize_path(base)
+        path = normalize_path(path)
+
+        if not path.startswith(base + os.sep) and path != base:
+            raise PathError(
+                f"Path '{path}' is not within base '{base}'",
+                ErrorCode.INVALID_INPUT
+            )
+
+        return os.path.relpath(path, base)
+    except (OSError, ValueError) as e:
+        raise PathError(f"Failed to make relative path: {e}", ErrorCode.INVALID_INPUT)
+
+
+@lru_cache(maxsize=1000)
+def parse_virtual_path(virtual_path: str) -> Tuple[Optional[str], str]:
+    """Parse virtual layer path into layer name and relative path.
+
+    Virtual paths have format: /layer_name/relative/path
+
+    Args:
+        virtual_path: Virtual path to parse
+
+    Returns:
+        Tuple of (layer_name, relative_path) or (None, path) if not virtual
+    """
+    if not virtual_path:
+        return None, ""
+
+    # Normalize slashes
+    virtual_path = virtual_path.replace("\\", "/")
+
+    # Remove leading slash if present
+    if virtual_path.startswith("/"):
+        virtual_path = virtual_path[1:]
+
+    # Split on first slash
+    parts = virtual_path.split("/", 1)
+
+    if len(parts) == 1:
+        # No slash, entire path might be layer name
+        return parts[0], ""
+    else:
+        # Layer name and remaining path
+        return parts[0], parts[1]
+
+
+def is_hidden_file(path: str) -> bool:
+    """Check if file/directory is hidden (starts with dot).
+
+    Args:
+        path: Path to check
+
+    Returns:
+        True if hidden, False otherwise
+    """
+    filename = get_filename(path)
+    return filename.startswith('.') and filename != '.' and filename != '..'
+
+
+def list_path_components(path: str) -> List[str]:
+    """Split path into all components.
+
+    Args:
+        path: Path to split
+
+    Returns:
+        List of path components
+
+    Example:
+        '/home/user/file.txt' -> ['/', 'home', 'user', 'file.txt']
+    """
+    if not path:
+        return []
+
+    # Normalize path
+    path = normalize_path(path)
+
+    # Use pathlib for clean splitting
+    path_obj = Path(path)
+    parts = list(path_obj.parts)
+
+    return parts
+
+
+def common_path_prefix(paths: List[str]) -> str:
+    """Find common prefix of multiple paths.
+
+    Args:
+        paths: List of paths
+
+    Returns:
+        Common prefix path, empty string if no common prefix
+    """
+    if not paths:
+        return ""
+
+    if len(paths) == 1:
+        return paths[0]
+
+    try:
+        # Normalize all paths
+        normalized = [normalize_path(p) for p in paths]
+
+        # Use os.path.commonpath for Python 3.5+
+        if hasattr(os.path, 'commonpath'):
+            return os.path.commonpath(normalized)
+        else:
+            # Fallback for older Python
+            return os.path.commonprefix(normalized)
+    except (OSError, ValueError, PathError):
+        return ""
+
+
+def ensure_trailing_slash(path: str) -> str:
+    """Ensure path ends with separator (for directories).
+
+    Args:
+        path: Path to process
+
+    Returns:
+        Path with trailing separator
+    """
+    if not path:
+        return os.sep
+
+    if not path.endswith(os.sep):
+        return path + os.sep
+
+    return path
+
+
+def remove_trailing_slash(path: str) -> str:
+    """Remove trailing separator from path.
+
+    Args:
+        path: Path to process
+
+    Returns:
+        Path without trailing separator
+    """
+    if not path or path == os.sep:
+        return path
+
+    return path.rstrip(os.sep)
