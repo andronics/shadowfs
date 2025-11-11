@@ -2,6 +2,14 @@
 
 **A FUSE-based filesystem that provides dynamic filtering, transformation, and virtual organizational views over existing filesystems.**
 
+## 📋 Implementation Status
+
+**Current Phase**: Planning Complete - Ready for Phase 0
+**Implementation Plan**: See [PLAN.md](PLAN.md) for detailed roadmap
+**Timeline**: 14 weeks to v1.0.0
+
+> **Important**: Always keep PLAN.md updated as phases complete. Mark completed items, update timelines, and document any deviations from the original plan.
+
 ---
 
 ## Project Vision
@@ -558,7 +566,32 @@ cache.invalidate_path("path/to/file")
 
 ## Development Roadmap
 
-### Phase 1: Foundation (Weeks 1-2)
+> **📌 Note**: This roadmap is now tracked in detail in [PLAN.md](PLAN.md). The information below is a summary. Always refer to PLAN.md for the authoritative implementation plan and update it as work progresses.
+
+### Quick Reference
+
+- **Phase 0**: Development Infrastructure (Week 1) - **MUST BE COMPLETED FIRST**
+- **Phase 1**: Foundation Layer (Weeks 2-3)
+- **Phase 2**: Infrastructure Layer (Weeks 4-5)
+- **Phase 3**: Integration - Rules & Transforms (Weeks 6-7)
+- **Phase 4**: Integration - Virtual Layers (Weeks 8-9)
+- **Phase 5**: Application Layer (Weeks 10-11)
+- **Phase 6**: Production Readiness (Weeks 12-14)
+- **Phase 7**: Middleware Extensions (Future)
+
+For detailed tasks, acceptance criteria, and parallelization opportunities, see [PLAN.md](PLAN.md).
+
+### Phase 0: Development Infrastructure (Week 1) - CRITICAL
+**Status**: Not Started
+**Reference**: [PLAN.md § Phase 0](PLAN.md#phase-0-development-infrastructure-week-1)
+
+This phase MUST be completed before any other work begins. It establishes:
+- CI/CD pipeline with automated quality gates
+- Test infrastructure with 100% coverage requirement
+- Pre-commit hooks and development scripts
+- All project configuration files
+
+### Phase 1: Foundation (Weeks 2-3)
 **Status**: Not Started
 
 **Tasks**:
@@ -1216,6 +1249,8 @@ MIT License - See LICENSE file for details
 
 ### Document Maintenance
 
+#### CLAUDE.md Updates
+
 This file should be updated when:
 - [ ] New documentation is added
 - [ ] Architecture changes occur
@@ -1224,8 +1259,32 @@ This file should be updated when:
 - [ ] New components are added
 - [ ] API changes occur
 
-**Review Schedule**: Weekly during active development
+#### PLAN.md Updates - CRITICAL
+
+**PLAN.md is the authoritative implementation guide and MUST be kept current:**
+
+**When to Update PLAN.md:**
+- [ ] **Phase Completion**: Mark tasks complete, update status, document completion date
+- [ ] **Timeline Changes**: Update estimates if phases take longer/shorter than planned
+- [ ] **Scope Changes**: Document any additions or removals from original plan
+- [ ] **Blockers Found**: Add to risk mitigation section
+- [ ] **Lessons Learned**: Add insights that would help future phases
+- [ ] **Test Coverage**: Update actual coverage percentages achieved
+- [ ] **Performance Metrics**: Record actual vs. target performance
+
+**How to Update PLAN.md:**
+1. Mark completed tasks with `[x]` in checklists
+2. Update phase status (Not Started → In Progress → Complete)
+3. Add completion dates next to phase headers
+4. Document any deviations from original plan with rationale
+5. Update risk mitigation based on actual issues encountered
+6. Keep success metrics current with actual measurements
+
+**Review Schedule**:
+- Daily during active development (quick status check)
+- Weekly for comprehensive review and updates
+- At each phase boundary for detailed documentation
 
 ---
 
-*This document provides a comprehensive overview of the ShadowFS project. For detailed technical specifications, refer to the linked documentation files.*
+*This document provides a comprehensive overview of the ShadowFS project. For detailed technical specifications, refer to the linked documentation files. For implementation details and current status, always consult [PLAN.md](PLAN.md).*
