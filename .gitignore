@@ -64,3 +64,15 @@ logs/
 *.local.yaml
 *.local.yml
 config.local.yaml
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Documentation build
+docs/_build/
+docs/api/
+
+# Project specific
+.shadowfs_cache/

@@ -1,0 +1,45 @@
+[tool.black]
+line-length = 100
+target-version = ['py311']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | venv
+  | build
+  | dist
+  | \.mypy_cache
+  | \.pytest_cache
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
+include_trailing_comma = true
+
+[tool.pylint]
+max-line-length = 100
+disable = [
+    "C0111",  # missing-docstring (we use type hints)
+    "R0903",  # too-few-public-methods
+]
+
+[tool.coverage.run]
+source = ["shadowfs"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
+fail_under = 100
+
+[tool.coverage.html]
+directory = "htmlcov"
