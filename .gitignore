@@ -1,0 +1,66 @@
+# Claude Code local settings
+.claude/settings.local.json
+.claude/skills/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test coverage
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# FUSE mount points (for testing)
+/mnt/shadowfs/
+mount_test/
+
+# Logs
+*.log
+logs/
+
+# Local configuration overrides
+*.local.yaml
+*.local.yml
+config.local.yaml
