@@ -1,9 +1,7 @@
 """Shared pytest fixtures for ShadowFS tests."""
-import os
-import sys
 import tempfile
 from pathlib import Path
-from typing import Generator, Dict, Any
+from typing import Any, Dict, Generator
 from unittest.mock import MagicMock
 
 import pytest
@@ -63,28 +61,14 @@ def sample_config() -> Dict[str, Any]:
     return {
         "shadowfs": {
             "version": "1.0",
-            "sources": [
-                {
-                    "path": "/tmp/source",
-                    "priority": 1,
-                    "readonly": False
-                }
-            ],
+            "sources": [{"path": "/tmp/source", "priority": 1, "readonly": False}],
             "rules": [
-                {
-                    "name": "Hide hidden files",
-                    "type": "exclude",
-                    "pattern": "**/.*"
-                },
+                {"name": "Hide hidden files", "type": "exclude", "pattern": "**/.*"},
                 {
                     "name": "Hide build artifacts",
                     "type": "exclude",
-                    "patterns": [
-                        "**/__pycache__/**",
-                        "**/build/**",
-                        "**/*.pyc"
-                    ]
-                }
+                    "patterns": ["**/__pycache__/**", "**/build/**", "**/*.pyc"],
+                },
             ],
             "transforms": [
                 {
@@ -92,30 +76,15 @@ def sample_config() -> Dict[str, Any]:
                     "pattern": "**/*.md",
                     "type": "convert",
                     "from": "markdown",
-                    "to": "html"
+                    "to": "html",
                 }
             ],
             "virtual_layers": [
-                {
-                    "name": "by-type",
-                    "type": "classifier",
-                    "classifier": "extension"
-                },
-                {
-                    "name": "by-date",
-                    "type": "date",
-                    "date_field": "mtime"
-                }
+                {"name": "by-type", "type": "classifier", "classifier": "extension"},
+                {"name": "by-date", "type": "date", "date_field": "mtime"},
             ],
-            "cache": {
-                "enabled": True,
-                "max_size_mb": 128,
-                "ttl_seconds": 300
-            },
-            "logging": {
-                "level": "DEBUG",
-                "file": None
-            }
+            "cache": {"enabled": True, "max_size_mb": 128, "ttl_seconds": 300},
+            "logging": {"level": "DEBUG", "file": None},
         }
     }
 

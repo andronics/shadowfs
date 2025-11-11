@@ -1,5 +1,4 @@
 """Phase 0 verification tests."""
-import pytest
 from pathlib import Path
 
 
@@ -54,4 +53,5 @@ def test_fixtures_available(temp_dir, sample_config, source_dir):
 def test_python_version():
     """Verify Python version is 3.11 or higher."""
     import sys
+
     assert sys.version_info >= (3, 11), "Python 3.11+ required"
