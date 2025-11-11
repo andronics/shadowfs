@@ -12,6 +12,7 @@ and enable the Application Layer (Layer 4).
 
 from .pattern_matcher import MultiMatcher, PatternEntry, PatternMatcher, PatternType
 from .rule_engine import Condition, Rule, RuleAction, RuleEngine, RuleOperator, get_file_attrs
+from .transform_pipeline import TransformPipeline
 
 __all__ = [
     # Pattern matching exports
@@ -26,4 +27,6 @@ __all__ = [
     "Rule",
     "RuleEngine",
     "get_file_attrs",
+    # Transform pipeline exports
+    "TransformPipeline",
 ]
