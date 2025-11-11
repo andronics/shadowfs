@@ -55,11 +55,16 @@ class TransformPipeline:
 
         # Initialize cache if enabled
         if cache_enabled:
-            from shadowfs.infrastructure import CacheLevel
+            from shadowfs.infrastructure import CacheConfig, CacheLevel
 
-            self._cache = CacheManager(
-                max_size_mb=256, ttl_seconds=cache_ttl, level=CacheLevel.L3
+            cache_config = CacheConfig(
+                max_entries=10000,
+                max_size_bytes=256 * 1024 * 1024,  # 256 MB
+                ttl_seconds=cache_ttl,
+                enabled=True,
             )
+            # Create simple single-level cache manager
+            self._cache = CacheManager(configs={CacheLevel.L3: cache_config})
         else:
             self._cache = None
 
@@ -141,7 +146,9 @@ class TransformPipeline:
         # Check cache first
         if self._cache_enabled and not skip_cache:
             cache_key = self._get_cache_key(content, path)
-            cached = self._cache.get(cache_key)
+            from shadowfs.infrastructure import CacheLevel
+
+            cached = self._cache.get("transform", cache_key, CacheLevel.L3)
             if cached is not None:
                 self._stats["cache_hits"] += 1
                 self._logger.debug(f"Transform cache hit for {path}")
@@ -203,7 +210,11 @@ class TransformPipeline:
         # Cache result if successful
         if self._cache_enabled and not skip_cache and all_success:
             cache_key = self._get_cache_key(content, path)
-            self._cache.set(cache_key, final_result)
+            from shadowfs.infrastructure import CacheLevel
+
+            # Estimate size
+            result_size = len(final_result.content) + 1024  # Content + metadata overhead
+            self._cache.set("transform", cache_key, final_result, result_size, CacheLevel.L3)
 
         return final_result
 
@@ -269,7 +280,9 @@ class TransformPipeline:
     def clear_cache(self) -> None:
         """Clear transform cache."""
         if self._cache:
-            self._cache.clear()
+            from shadowfs.infrastructure import CacheLevel
+
+            self._cache.clear(CacheLevel.L3)
 
     def enable_transform(self, name: str) -> bool:
         """Enable transform by name.
