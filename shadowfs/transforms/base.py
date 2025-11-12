@@ -103,7 +103,7 @@ class Transform(ABC):
         Raises:
             TransformError: If transformation fails
         """
-        pass
+        pass  # pragma: no cover - abstract method, must be overridden
 
     def supports(self, path: str, metadata: Optional[Dict[str, Any]] = None) -> bool:
         """Check if this transform supports the given path.

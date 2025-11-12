@@ -164,6 +164,13 @@ class TestValidateCacheConfigEdgeCases:
             validate_cache_config(cache)
         assert "eviction" in str(exc_info.value).lower() or "policy" in str(exc_info.value).lower()
 
+    def test_cache_eviction_policy_not_string(self):
+        """Test cache with non-string eviction policy (line 334)."""
+        cache = {"enabled": True, "eviction_policy": 123}
+        with pytest.raises(ValidationError) as exc_info:
+            validate_cache_config(cache)
+        assert "eviction policy must be string" in str(exc_info.value).lower()
+
 
 class TestValidatePatternEdgeCases:
     """Edge case tests for validate_pattern."""
@@ -174,3 +181,16 @@ class TestValidatePatternEdgeCases:
         with pytest.raises(ValidationError) as exc_info:
             validate_pattern(pattern)
         assert "regex" in str(exc_info.value).lower()
+
+
+class TestValidatePermissionsEdgeCases:
+    """Edge case tests for validate_permissions."""
+
+    def test_permissions_mode_with_0o_prefix(self):
+        """Test permissions mode string with 0o prefix (line 542)."""
+        from shadowfs.core.validators import validate_permissions
+
+        # Mode string with "0o" prefix should work
+        assert validate_permissions("0o644") is True
+        assert validate_permissions("0o755") is True
+        assert validate_permissions("0o777") is True

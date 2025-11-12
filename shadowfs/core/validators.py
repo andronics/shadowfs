@@ -124,8 +124,7 @@ def validate_source_config(source: Dict[str, Any]) -> bool:
         raise ValidationError("Source must have 'path' field")
 
     path = source[ConfigKey.SOURCE_PATH]
-    if not validate_path(path):
-        raise ValidationError(f"Invalid source path: {path}")
+    validate_path(path)  # Raises ValidationError on failure
 
     # Optional field: priority (integer)
     if ConfigKey.SOURCE_PRIORITY in source:
@@ -178,8 +177,7 @@ def validate_rule_config(rule: Dict[str, Any]) -> bool:
     # Validate pattern(s)
     if has_pattern:
         pattern = rule[ConfigKey.RULE_PATTERN]
-        if not validate_pattern(pattern):
-            raise ValidationError(f"Invalid pattern: {pattern}")
+        validate_pattern(pattern)  # Raises ValidationError on failure
 
     if has_patterns:
         patterns = rule[ConfigKey.RULE_PATTERNS]
@@ -187,8 +185,10 @@ def validate_rule_config(rule: Dict[str, Any]) -> bool:
             raise ValidationError("Patterns must be a list")
 
         for pattern in patterns:
-            if not validate_pattern(pattern):
-                raise ValidationError(f"Invalid pattern in list: {pattern}")
+            try:
+                validate_pattern(pattern)
+            except ValidationError as e:
+                raise ValidationError(f"Invalid pattern in list: {e}")
 
     # Optional field: priority (integer)
     if "priority" in rule:
@@ -232,8 +232,7 @@ def validate_transform_config(transform: Dict[str, Any]) -> bool:
         raise ValidationError("Transform must have 'pattern' field")
 
     pattern = transform[ConfigKey.TRANSFORM_PATTERN]
-    if not validate_pattern(pattern):
-        raise ValidationError(f"Invalid transform pattern: {pattern}")
+    validate_pattern(pattern)  # Raises ValidationError on failure
 
     return True
 
@@ -258,8 +257,7 @@ def validate_virtual_layer_config(layer: Dict[str, Any]) -> bool:
         raise ValidationError("Virtual layer must have 'name' field")
 
     name = layer["name"]
-    if not validate_layer_name(name):
-        raise ValidationError(f"Invalid virtual layer name: {name}")
+    validate_layer_name(name)  # Raises ValidationError on failure
 
     # Required field: type
     if "type" not in layer:
