@@ -52,4 +52,13 @@ setup(
             "shadowfs=shadowfs.cli:main",
         ],
     },
+    scripts=[
+        "bin/mount.shadowfs",
+    ],
+    data_files=[
+        # Note: Installing to /sbin requires root. Post-install, create symlink:
+        #   sudo ln -s $(which mount.shadowfs) /sbin/mount.shadowfs
+        # Or for systemd-based systems:
+        #   sudo ln -s $(which mount.shadowfs) /usr/sbin/mount.shadowfs
+    ],
 )
