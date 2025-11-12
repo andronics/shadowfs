@@ -45,7 +45,7 @@ Just like TypeScript's `.d.ts` files create a "shadow" type layer over JavaScrip
           ║   ShadowFS Layer    ║
           ║                     ║
           ║  1. Filters         ║ ◄─── Show/hide files by rules
-          ║  2. Transforms      ║ ◄─── Modify content on-the-fly  
+          ║  2. Transforms      ║ ◄─── Modify content on-the-fly
           ║  3. Virtual Layers  ║ ◄─── Multiple organizational views
           ║  4. Middleware      ║ ◄─── Advanced capabilities (Phase 7+)
           ╚══════════╤══════════╝
@@ -95,7 +95,7 @@ shadowfs:
   sources:
     - path: /source/projects
       priority: 1
-  
+
   # Filter: hide build artifacts
   rules:
     - name: "Hide build files"
@@ -103,7 +103,7 @@ shadowfs:
       patterns:
         - "**/__pycache__/**"
         - "**/node_modules/**"
-  
+
   # Transform: convert markdown to HTML
   transforms:
     - name: "Markdown to HTML"
@@ -111,7 +111,7 @@ shadowfs:
       type: convert
       from: markdown
       to: html
-  
+
   # Virtual layer: organize by file type
   virtual_layers:
     - name: by-type
@@ -176,7 +176,7 @@ Design for creating multiple directory structures over the same files:
   - Date Layers (YYYY/MM/DD hierarchy)
   - Hierarchical Layers (multi-level structures)
   - Pattern Layers (rule-based classification)
-  
+
 - **The Mechanism**:
   - Path interception and resolution
   - Reverse index: `category → files`
@@ -190,10 +190,10 @@ by-type/
   python/ → *.py files
   javascript/ → *.js files
 
-# Photo library  
+# Photo library
 by-date/
   2024/11/11/ → photos from Nov 11
-  
+
 by-camera/
   Canon/ → Canon camera photos
 
@@ -421,34 +421,166 @@ content = pipeline.apply(original_bytes, "README.md")
 
 **Reference**: [docs/virtual-layers.md](docs/virtual-layers.md)
 
+**Status**: ✅ Complete (Phase 4)
+
 **Key Classes**:
 - `VirtualLayer` (base): Abstract interface for all layers
-- `ClassifierLayer`: Organize by file properties
-- `TagLayer`: Organize by metadata tags
-- `DateLayer`: Time-based hierarchy
-- `HierarchicalLayer`: Multi-level structures
+- `ClassifierLayer`: Organize by file properties (extension, size, MIME, pattern, git status)
+- `DateLayer`: Time-based hierarchy (YYYY/MM/DD)
+- `TagLayer`: Organize by metadata tags (xattr, sidecar files, patterns)
+- `HierarchicalLayer`: Multi-level structures (project/type, arbitrary depth)
 - `VirtualLayerManager`: Coordinates all layers
+- `LayerFactory`: Factory functions for common configurations
 
-**Example**:
+**Quick Start**:
 ```python
-from shadowfs.virtual_layers import VirtualLayerManager, ClassifierLayer
-
-manager = VirtualLayerManager(sources=["/data"])
-
-# Add by-type layer
-type_layer = ClassifierLayer(
-    name="by-type",
-    classifier=lambda f: f.extension.lstrip('.')
+from shadowfs.integration.virtual_layers import (
+    VirtualLayerManager,
+    LayerFactory,
 )
-manager.add_layer(type_layer)
+
+# Create manager with source directories
+manager = VirtualLayerManager(["/data/projects", "/data/docs"])
+
+# Add layers using factory
+manager.add_layer(LayerFactory.create_extension_layer("by-type"))
+manager.add_layer(LayerFactory.create_date_layer("by-date"))
+manager.add_layer(LayerFactory.create_size_layer("by-size"))
 
 # Scan and build indexes
 manager.scan_sources()
 manager.rebuild_indexes()
 
-# Resolve virtual path
-real_path = manager.resolve_path("by-type/python/project.py")
-# Returns: /data/project.py
+# Resolve virtual paths
+real_path = manager.resolve_path("by-type/py/project.py")
+# Returns: /data/projects/project.py
+
+# List virtual directories
+types = manager.list_directory("by-type")
+# Returns: ['py', 'js', 'md', ...]
+
+years = manager.list_directory("by-date")
+# Returns: ['2023', '2024', '2025']
+```
+
+**Advanced Usage - Custom Layers**:
+```python
+from shadowfs.integration.virtual_layers import (
+    ClassifierLayer,
+    DateLayer,
+    TagLayer,
+    HierarchicalLayer,
+    ClassifierBuiltins,
+    HierarchicalBuiltins,
+    TagExtractors,
+)
+
+# Classifier layer with built-in classifiers
+extension_layer = ClassifierLayer("by-type", ClassifierBuiltins.extension)
+size_layer = ClassifierLayer("by-size", ClassifierBuiltins.size)
+mime_layer = ClassifierLayer("by-mime", ClassifierBuiltins.mime_type)
+
+# Date layer (mtime, ctime, or atime)
+date_layer = DateLayer("by-modified", "mtime")
+
+# Tag layer with multiple extractors
+tag_layer = TagLayer("by-tag", [
+    TagExtractors.xattr(),                          # Extended attributes
+    TagExtractors.sidecar(".tags"),                 # Sidecar files
+    TagExtractors.filename_pattern("*important*", ["important"]),
+    TagExtractors.extension_map({".py": ["code", "python"]}),
+])
+
+# Hierarchical layer with custom classifiers
+project_layer = HierarchicalLayer("by-project", [
+    HierarchicalBuiltins.by_path_component(0),      # First directory = project
+    HierarchicalBuiltins.by_path_component(1),      # Second directory = category
+])
+
+# Add all layers to manager
+for layer in [extension_layer, size_layer, date_layer, tag_layer, project_layer]:
+    manager.add_layer(layer)
+
+manager.rebuild_indexes()
+```
+
+**Layer Types**:
+
+1. **ClassifierLayer** - Organize by single property
+   - Built-in classifiers: extension, size, mime_type, pattern, git_status
+   - Custom: `lambda file_info: <category>`
+
+2. **DateLayer** - Three-level date hierarchy (YYYY/MM/DD)
+   - Fields: mtime (modification), ctime (creation), atime (access)
+
+3. **TagLayer** - Multi-tag support (one file in multiple categories)
+   - Extractors: xattr, sidecar files, patterns, extension mapping
+
+4. **HierarchicalLayer** - N-level hierarchies
+   - Classifiers: path component, extension group, size range
+   - Custom: chain multiple classifiers
+
+**Statistics and Management**:
+```python
+# Get manager statistics
+stats = manager.get_stats()
+print(f"Sources: {stats['source_count']}")
+print(f"Layers: {stats['layer_count']}")
+print(f"Files: {stats['file_count']}")
+
+# List all layers
+layers = manager.list_layers()
+# Returns: ['by-type', 'by-date', 'by-size', ...]
+
+# Get specific layer
+layer = manager.get_layer("by-type")
+
+# Remove layer
+manager.remove_layer("by-size")
+
+# Clear everything
+manager.clear_all()
+```
+
+**Complete Example - Photo Organization**:
+```python
+from shadowfs.integration.virtual_layers import (
+    VirtualLayerManager,
+    DateLayer,
+    TagLayer,
+    TagExtractors,
+)
+
+# Create manager for photo library
+manager = VirtualLayerManager(["/photos"])
+
+# Organize by date taken
+date_layer = DateLayer("by-date", "mtime")
+manager.add_layer(date_layer)
+
+# Organize by tags from xattr and sidecar files
+tag_layer = TagLayer("by-tag", [
+    TagExtractors.xattr(),
+    TagExtractors.sidecar(".tags"),
+])
+manager.add_layer(tag_layer)
+
+# Scan photos and build indexes
+manager.scan_sources()
+manager.rebuild_indexes()
+
+# Access photos by date
+photos_nov_12 = manager.list_directory("by-date/2024/11/12")
+
+# Access photos by tag
+family_photos = manager.list_directory("by-tag/family")
+vacation_photos = manager.list_directory("by-tag/vacation")
+
+# Same photo can appear in multiple virtual locations
+# /photos/IMG_1234.jpg appears as:
+#   - by-date/2024/11/12/IMG_1234.jpg
+#   - by-tag/family/IMG_1234.jpg
+#   - by-tag/vacation/IMG_1234.jpg
 ```
 
 ---
@@ -786,23 +918,23 @@ This phase MUST be completed before any other work begins. It establishes:
 ```yaml
 shadowfs:
   version: "1.0"
-  
+
   # Source directories
   sources:
     - path: /data/documents
       priority: 1
       readonly: true
-  
+
   # Visibility rules
   rules:
     - name: "Hide hidden files"
       type: exclude
       pattern: "**/.*"
-    
+
     - name: "Show Python files"
       type: include
       pattern: "**/*.py"
-  
+
   # Content transforms
   transforms:
     - name: "Markdown to HTML"
@@ -810,19 +942,19 @@ shadowfs:
       type: convert
       from: markdown
       to: html
-  
+
   # Virtual layers
   virtual_layers:
     - name: by-type
       type: classifier
       classifier: extension
-  
+
   # Caching
   cache:
     enabled: true
     max_size_mb: 512
     ttl_seconds: 300
-  
+
   # Logging
   logging:
     level: INFO
@@ -841,7 +973,7 @@ virtual_layers:
   - name: by-type
     type: classifier
     classifier: extension
-    
+
   - name: by-category
     type: classifier
     classifier: pattern
@@ -858,7 +990,7 @@ virtual_layers:
   - name: by-date
     type: date
     date_field: ctime
-    
+
   - name: by-camera
     type: classifier
     classifier: exif
@@ -934,7 +1066,7 @@ pytest tests/integration/test_performance.py -v
    - Validate all paths
    - Prevent `../` escapes
    - Resolve symlinks safely
-   
+
 2. **Transform Sandboxing**
    - Restricted execution environment
    - No access to filesystem/network
@@ -1036,11 +1168,11 @@ virtual_layers:
   - name: by-date
     type: date
     date_field: ctime
-  
+
   - name: by-camera
     type: classifier
     classifier: exif
-  
+
   - name: by-tags
     type: tags
     tag_source: xattr
@@ -1185,7 +1317,7 @@ black shadowfs/
 **A**: Yes, if configured with `readonly: false` for sources. Writes go directly to underlying filesystem. Virtual layers can auto-classify new files.
 
 ### Q: How does performance compare to direct access?
-**A**: 
+**A**:
 - **First access**: Slower (rule evaluation, transform, indexing)
 - **Cached access**: Near-native (served from memory)
 - **Typical overhead**: 5-10% for cached operations
@@ -1197,7 +1329,7 @@ black shadowfs/
 **A**: Yes. ShadowFS works over any POSIX filesystem including NFS, SMB, sshfs.
 
 ### Q: How do I debug issues?
-**A**: 
+**A**:
 1. Mount with `--foreground --debug`
 2. Check logs: `/var/log/shadowfs/shadowfs.log`
 3. Use control API: `shadowfs-ctl stats`
@@ -1242,9 +1374,9 @@ MIT License - See LICENSE file for details
 
 ## Document Status
 
-**Version**: 1.1.0  
-**Last Updated**: 2025-11-11  
-**Status**: Design Phase (with Phase 7 middleware roadmap added)  
+**Version**: 1.1.0
+**Last Updated**: 2025-11-11
+**Status**: Design Phase (with Phase 7 middleware roadmap added)
 **Next Review**: Upon completion of Phase 1 (Foundation)
 
 ### Document Maintenance
