@@ -419,7 +419,7 @@ class TestTagLayerResolve:
 
         layer = TagLayer("by-tag", [extractor])
 
-        files = []
+        files: list[FileInfo] = []
         layer.build_index(files)
 
         # Just tag, no filename
@@ -521,7 +521,7 @@ class TestTagLayerListDirectory:
 
         layer = TagLayer("by-tag", [extractor])
 
-        files = []
+        files: list[FileInfo] = []
         layer.build_index(files)
 
         result = layer.list_directory("nonexistent")
@@ -970,5 +970,5 @@ class TestTagLayerEdgeCases:
         # Only string tags should be in index
         assert "valid" in layer.index
         assert "another" in layer.index
-        assert 123 not in layer.index
-        assert None not in layer.index
+        assert 123 not in layer.index  # type: ignore[comparison-overlap]
+        assert None not in layer.index  # type: ignore[comparison-overlap]
