@@ -113,7 +113,7 @@ shadowfs:
       to: html
 
   # Virtual layer: organize by file type
-  virtual_layers:
+  layers:
     - name: by-type
       type: classifier
       classifier: extension
@@ -254,59 +254,63 @@ The "shadow filesystem" mental model came from understanding TypeScript's type d
 
 ## Project Structure
 
+**Note**: This structure uses a feature-based organization that groups related functionality together, replacing the previous strict 4-layer architecture (foundation/infrastructure/integration/application).
+
 ```
 shadowfs/
 ├── CLAUDE.md                          # ← This file
+├── PLAN.md                            # Implementation roadmap
 ├── docs/
-│   ├── docs/architecture.md       # Main architecture
-│   ├── docs/middleware-ideas.md              # Mieddleware Ideas
-│   ├── docs/virtual-layers.md              # Virtual layers design
-│   └── docs/typescript-type-discovery.md   # Conceptual foundation
+│   ├── architecture.md                # Main architecture (Meta-Architecture v1.0.0)
+│   ├── middleware-ideas.md            # Middleware extension patterns
+│   ├── virtual-layers.md              # Virtual layers design
+│   └── typescript-type-discovery.md   # Conceptual foundation
 │
 ├── shadowfs/
 │   ├── __init__.py
 │   │
-│   ├── foundation/
-│   │   ├── path_utils.py              # Path normalization, validation
-│   │   ├── file_operations.py         # Safe file I/O
-│   │   ├── validators.py              # Input validation
-│   │   └── constants.py               # System constants
+│   ├── core/                          # Shared utilities (foundation + infrastructure)
+│   │   ├── __init__.py
+│   │   ├── cache.py                   # CacheManager (was infrastructure/cache_manager.py)
+│   │   ├── config.py                  # ConfigManager (was infrastructure/config_manager.py)
+│   │   ├── constants.py               # System constants (was foundation/constants.py)
+│   │   ├── file_ops.py                # Safe file I/O (was foundation/file_operations.py)
+│   │   ├── logging.py                 # Structured logging (was infrastructure/logger.py)
+│   │   ├── metrics.py                 # Performance metrics (was infrastructure/metrics.py)
+│   │   ├── path_utils.py              # Path utilities (was foundation/path_utils.py)
+│   │   └── validators.py              # Input validation (was foundation/validators.py)
 │   │
-│   ├── infrastructure/
-│   │   ├── config_manager.py          # Hierarchical config
-│   │   ├── cache_manager.py           # LRU cache with TTL
-│   │   ├── logger.py                  # Structured logging
-│   │   └── metrics.py                 # Performance metrics
+│   ├── layers/                # Virtual layer system (complete feature)
+│   │   ├── __init__.py
+│   │   ├── base.py                    # Layer base class
+│   │   ├── classifier.py              # ClassifierLayer (was classifier_layer.py)
+│   │   ├── date.py                    # DateLayer (was date_layer.py)
+│   │   ├── hierarchical.py            # HierarchicalLayer (was hierarchical_layer.py)
+│   │   ├── tag.py                     # TagLayer (was tag_layer.py)
+│   │   └── manager.py                 # LayerManager
 │   │
-│   ├── integration/
-│   │   ├── rule_engine.py             # Filter rules evaluation
-│   │   ├── transform_pipeline.py      # Transform chain
-│   │   ├── pattern_matcher.py         # Glob/regex matching
-│   │   ├── view_compositor.py         # Multi-source merging
-│   │   └── virtual_layers/
-│   │       ├── __init__.py
-│   │       ├── base.py                # VirtualLayer base class
-│   │       ├── classifier_layer.py    # Classify by property
-│   │       ├── tag_layer.py           # Organize by tags
-│   │       ├── date_layer.py          # Time-based hierarchy
-│   │       ├── hierarchical_layer.py  # Multi-level structures
-│   │       └── manager.py             # VirtualLayerManager
+│   ├── rules/                         # Rule system (complete feature)
+│   │   ├── __init__.py
+│   │   ├── engine.py                  # RuleEngine (was integration/rule_engine.py)
+│   │   └── patterns.py                # PatternMatcher (was integration/pattern_matcher.py)
 │   │
-│   ├── application/
-│   │   ├── fuse_operations.py         # FUSE callbacks
-│   │   ├── shadowfs_main.py           # Main entry point
-│   │   ├── control_server.py          # Runtime control API
-│   │   └── cli.py                     # Command-line interface
+│   ├── transforms/                    # Transform system (complete feature)
+│   │   ├── __init__.py
+│   │   ├── base.py                    # Transform base class
+│   │   ├── compression.py             # gzip/bz2/lzma
+│   │   ├── format_conversion.py       # MD→HTML, CSV→JSON
+│   │   ├── pipeline.py                # TransformPipeline (was integration/transform_pipeline.py)
+│   │   └── template.py                # Jinja2 templates
 │   │
-│   └── transforms/
-│       ├── __init__.py
-│       ├── base.py                    # Transform base class
-│       ├── template.py                # Jinja2 templates
-│       ├── compression.py             # gzip/bz2/lzma
-│       ├── encryption.py              # AES/ChaCha20
-│       └── format_conversion.py       # MD→HTML, CSV→JSON
+│   ├── fuse/                          # FUSE interface (complete feature)
+│   │   ├── __init__.py
+│   │   ├── operations.py              # ShadowFSOperations (was application/fuse_operations.py)
+│   │   └── control.py                 # ControlServer (was application/control_server.py)
+│   │
+│   ├── cli.py                         # CLI entry point (was application/cli.py)
+│   └── main.py                        # Main entry point (was application/shadowfs_main.py)
 │
-│   └── middleware/                    # Phase 7: Middleware extensions
+│   └── middleware/                    # Phase 7: Middleware extensions (future)
 │       ├── __init__.py
 │       ├── base.py                    # Middleware base class
 │       ├── deduplication.py           # Block-level dedup
@@ -320,13 +324,15 @@ shadowfs/
 │       ├── quota.py                   # Quota & rate limiting
 │       └── audit.py                   # Audit logging
 │
-├── tests/
-│   ├── application/
-│   ├── foundation/
-│   ├── integrations/
-│   ├── infrastructure/
-│   ├── middleware/
-│   └── transforms/
+├── tests/                             # Mirror source structure
+│   ├── core/                          # Core module tests
+│   ├── layers/                # Virtual layers tests
+│   ├── rules/                         # Rules system tests
+│   ├── transforms/                    # Transforms tests
+│   ├── fuse/                          # FUSE interface tests
+│   ├── integration/                   # End-to-end tests
+│   ├── test_cli.py                    # CLI tests
+│   └── test_main.py                   # Main entry point tests
 │
 ├── config/
 │   ├── shadowfs.yaml                  # Example config
@@ -344,6 +350,33 @@ shadowfs/
 ├── setup.py
 ├── README.md
 └── LICENSE
+```
+
+### Import Examples (Updated for New Structure)
+
+```python
+# Core utilities
+from shadowfs.core.cache import CacheManager
+from shadowfs.core.config import ConfigManager
+from shadowfs.core import constants, logging, path_utils
+
+# Virtual layers
+from shadowfs.layers import LayerManager
+from shadowfs.layers.classifier import ClassifierLayer
+
+# Rules system
+from shadowfs.rules import RuleEngine, PatternMatcher
+from shadowfs.rules.engine import Rule, RuleAction
+
+# Transforms
+from shadowfs.transforms import TransformPipeline
+from shadowfs.transforms.compression import CompressionTransform
+
+# FUSE interface
+from shadowfs.fuse import ShadowFSOperations, ControlServer
+
+# Entry points
+from shadowfs import cli, main
 ```
 
 ---
@@ -415,7 +448,7 @@ content = pipeline.apply(original_bytes, "README.md")
 
 ### 3. Virtual Layer System
 
-**Location**: `shadowfs/integration/virtual_layers/`
+**Location**: `shadowfs/layers/`
 
 **Purpose**: Create multiple organizational views over same files
 
@@ -424,23 +457,23 @@ content = pipeline.apply(original_bytes, "README.md")
 **Status**: ✅ Complete (Phase 4)
 
 **Key Classes**:
-- `VirtualLayer` (base): Abstract interface for all layers
+- `Layer` (base): Abstract interface for all layers
 - `ClassifierLayer`: Organize by file properties (extension, size, MIME, pattern, git status)
 - `DateLayer`: Time-based hierarchy (YYYY/MM/DD)
 - `TagLayer`: Organize by metadata tags (xattr, sidecar files, patterns)
 - `HierarchicalLayer`: Multi-level structures (project/type, arbitrary depth)
-- `VirtualLayerManager`: Coordinates all layers
+- `LayerManager`: Coordinates all layers
 - `LayerFactory`: Factory functions for common configurations
 
 **Quick Start**:
 ```python
-from shadowfs.integration.virtual_layers import (
-    VirtualLayerManager,
+from shadowfs.layers import (
+    LayerManager,
     LayerFactory,
 )
 
 # Create manager with source directories
-manager = VirtualLayerManager(["/data/projects", "/data/docs"])
+manager = LayerManager(["/data/projects", "/data/docs"])
 
 # Add layers using factory
 manager.add_layer(LayerFactory.create_extension_layer("by-type"))
@@ -465,7 +498,7 @@ years = manager.list_directory("by-date")
 
 **Advanced Usage - Custom Layers**:
 ```python
-from shadowfs.integration.virtual_layers import (
+from shadowfs.layers import (
     ClassifierLayer,
     DateLayer,
     TagLayer,
@@ -544,15 +577,15 @@ manager.clear_all()
 
 **Complete Example - Photo Organization**:
 ```python
-from shadowfs.integration.virtual_layers import (
-    VirtualLayerManager,
+from shadowfs.layers import (
+    LayerManager,
     DateLayer,
     TagLayer,
     TagExtractors,
 )
 
 # Create manager for photo library
-manager = VirtualLayerManager(["/photos"])
+manager = LayerManager(["/photos"])
 
 # Organize by date taken
 date_layer = DateLayer("by-date", "mtime")
@@ -618,7 +651,7 @@ config.load_config("shadowfs.yaml")
 config.watch_file(on_change=lambda: print("Config reloaded"))
 
 # Access configuration
-for layer in config.virtual_layers:
+for layer in config.layers:
     print(f"Virtual layer: {layer.name}")
 ```
 
@@ -780,12 +813,12 @@ This phase MUST be completed before any other work begins. It establishes:
 
 **Tasks**:
 - [ ] Implement virtual layers system
-  - [ ] `base.py`: VirtualLayer abstract base class
+  - [ ] `base.py`: Layer abstract base class
   - [ ] `classifier_layer.py`: Classifier-based organization
   - [ ] `tag_layer.py`: Tag-based organization
   - [ ] `date_layer.py`: Date-based hierarchy
   - [ ] `hierarchical_layer.py`: Multi-level structures
-  - [ ] `manager.py`: VirtualLayerManager
+  - [ ] `manager.py`: LayerManager
 - [ ] Built-in classifiers (extension, size, MIME type)
 - [ ] Index building and caching
 - [ ] Integration tests for virtual layers
@@ -944,7 +977,7 @@ shadowfs:
       to: html
 
   # Virtual layers
-  virtual_layers:
+  layers:
     - name: by-type
       type: classifier
       classifier: extension
@@ -969,7 +1002,7 @@ shadowfs:
 
 **Development Environment**:
 ```yaml
-virtual_layers:
+layers:
   - name: by-type
     type: classifier
     classifier: extension
@@ -986,7 +1019,7 @@ virtual_layers:
 
 **Photo Library**:
 ```yaml
-virtual_layers:
+layers:
   - name: by-date
     type: date
     date_field: ctime
@@ -1020,7 +1053,7 @@ tests/
 ├── test_layer3/
 │   ├── test_rule_engine.py
 │   ├── test_transform_pipeline.py
-│   └── test_virtual_layers/
+│   └── test_layers/
 │       ├── test_classifier_layer.py
 │       ├── test_date_layer.py
 │       └── test_manager.py
@@ -1032,7 +1065,7 @@ tests/
 └── integration/
     ├── test_end_to_end.py
     ├── test_performance.py
-    └── test_virtual_layers_integration.py
+    └── test_layers_integration.py
 ```
 
 ### Running Tests
@@ -1164,7 +1197,7 @@ transforms:
 
 **Solution**: Virtual layers by date, camera, tags
 ```yaml
-virtual_layers:
+layers:
   - name: by-date
     type: date
     date_field: ctime

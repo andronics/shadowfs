@@ -1,7 +1,8 @@
-"""ShadowFS Transforms - Content transformation plugins.
+"""ShadowFS Transforms - Content transformation system.
 
 This module provides content transformation capabilities:
-- Base transform classes
+- TransformPipeline: Chain multiple transforms together
+- Base transform classes and types
 - Template transformation (Jinja2)
 - Compression (gzip, bz2, lzma)
 - Format conversion (Markdown, CSV, JSON, YAML)
@@ -20,9 +21,12 @@ from .format_conversion import (
     MarkdownToHTMLTransform,
     YAMLToJSONTransform,
 )
+from .pipeline import TransformPipeline
 from .template import TemplateTransform
 
 __all__ = [
+    # Pipeline
+    "TransformPipeline",
     # Base classes
     "Transform",
     "TransformResult",

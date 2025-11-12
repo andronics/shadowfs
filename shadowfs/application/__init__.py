@@ -1,1 +1,0 @@
-"""ShadowFS Application Layer - FUSE operations and CLI."""
