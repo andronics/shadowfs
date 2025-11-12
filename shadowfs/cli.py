@@ -34,6 +34,109 @@ class CLIError(Exception):
     pass
 
 
+def parse_mount_options(options_str: str) -> Dict[str, any]:
+    """
+    Parse comma-delimited mount options into a dictionary.
+
+    Supports both boolean flags and key=value pairs. Values are automatically
+    converted to appropriate types (int, float, bool, or str).
+
+    Args:
+        options_str: Comma-delimited options string (e.g., "ro,allow_other,max_size=512")
+
+    Returns:
+        Dictionary of parsed options
+
+    Examples:
+        >>> parse_mount_options("ro,allow_other")
+        {'ro': True, 'allow_other': True}
+
+        >>> parse_mount_options("max_size=512,debug")
+        {'max_size': 512, 'debug': True}
+
+        >>> parse_mount_options("threshold=0.75,enabled=true")
+        {'threshold': 0.75, 'enabled': True}
+    """
+    options = {}
+    if not options_str:
+        return options
+
+    for opt in options_str.split(','):
+        opt = opt.strip()
+        if not opt:
+            continue
+
+        if '=' in opt:
+            key, value = opt.split('=', 1)
+            key = key.strip()
+            value = value.strip()
+
+            # Try to parse value as int
+            try:
+                options[key] = int(value)
+                continue
+            except ValueError:
+                pass
+
+            # Try to parse value as float
+            try:
+                options[key] = float(value)
+                continue
+            except ValueError:
+                pass
+
+            # Parse boolean strings
+            if value.lower() in ('true', 'yes', '1', 'on'):
+                options[key] = True
+            elif value.lower() in ('false', 'no', '0', 'off'):
+                options[key] = False
+            else:
+                # Keep as string
+                options[key] = value
+        else:
+            # Boolean flag (presence means True)
+            options[opt] = True
+
+    return options
+
+
+def discover_config() -> Optional[str]:
+    """
+    Auto-discover configuration file following XDG Base Directory Specification.
+
+    Search order:
+    1. /etc/shadowfs/config.yaml (system-wide configuration)
+    2. ~/.config/shadowfs/config.yaml (user-specific configuration)
+    3. None (use compiled defaults)
+
+    The XDG_CONFIG_HOME environment variable is respected for user config location.
+
+    Returns:
+        Path to configuration file if found, None otherwise
+
+    Examples:
+        >>> config_file = discover_config()
+        >>> if config_file:
+        ...     print(f"Found config at: {config_file}")
+    """
+    # System-wide configuration
+    system_config = Path("/etc/shadowfs/config.yaml")
+    if system_config.exists():
+        return str(system_config)
+
+    # User-specific configuration (respect XDG_CONFIG_HOME)
+    xdg_config_home = os.environ.get("XDG_CONFIG_HOME")
+    if xdg_config_home:
+        user_config = Path(xdg_config_home) / "shadowfs" / "config.yaml"
+    else:
+        user_config = Path.home() / ".config" / "shadowfs" / "config.yaml"
+
+    if user_config.exists():
+        return str(user_config)
+
+    return None
+
+
 def parse_arguments(args: Optional[List[str]] = None) -> argparse.Namespace:
     """
     Parse command-line arguments.
@@ -53,20 +156,23 @@ def parse_arguments(args: Optional[List[str]] = None) -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Mount with single source
-  shadowfs --sources /data --mount /mnt/shadowfs
+  # Simple mount (new syntax)
+  shadowfs /data /mnt/shadowfs
 
-  # Mount with configuration file
-  shadowfs --config shadowfs.yaml --mount /mnt/shadowfs
+  # With mount options (new syntax)
+  shadowfs /data /mnt/shadowfs -o ro,allow_other,debug
 
-  # Mount in foreground for debugging
-  shadowfs --sources /data --mount /mnt/shadowfs --foreground --debug
+  # With configuration file
+  shadowfs /data /mnt/shadowfs -c shadowfs.yaml
 
-  # Mount with multiple sources
-  shadowfs --sources /data /backup --mount /mnt/shadowfs
+  # Foreground mode for debugging
+  shadowfs /data /mnt/shadowfs -f -o debug
 
-  # Mount read-write mode
-  shadowfs --sources /data --mount /mnt/shadowfs --read-write
+  # Complex options
+  shadowfs /data /mnt/shadowfs -o allow_other,max_size=512,debug
+
+  # Legacy syntax (still supported)
+  shadowfs --sources /data --mount /mnt/shadowfs --allow-other
 
 For more information, see: https://github.com/andronics/shadowfs
         """,
@@ -80,33 +186,58 @@ For more information, see: https://github.com/andronics/shadowfs
         version=f"%(prog)s {VERSION}",
     )
 
+    # Positional arguments (new style)
+    parser.add_argument(
+        "source",
+        nargs="?",
+        help="Source directory to expose (positional, or use --sources)",
+    )
+
+    parser.add_argument(
+        "mount",
+        nargs="?",
+        help="Mount point directory (positional, or use --mount)",
+    )
+
     # Configuration file
     parser.add_argument(
         "-c",
         "--config",
         metavar="FILE",
         type=str,
-        help="Configuration file path (YAML format)",
+        help="Configuration file path (auto-discovered if not specified)",
     )
 
-    # Source directories
+    # Mount options (new style)
     parser.add_argument(
+        "-o",
+        "--options",
+        metavar="OPTIONS",
+        type=str,
+        help="Mount options (comma-delimited, e.g., 'ro,allow_other,debug')",
+    )
+
+    # Legacy arguments (for backward compatibility)
+    legacy_group = parser.add_argument_group("legacy options (deprecated, use positional args)")
+
+    # Source directories (legacy)
+    legacy_group.add_argument(
         "-s",
         "--sources",
         metavar="DIR",
         nargs="+",
         type=str,
-        help="Source directories to expose (space-separated)",
+        help="Source directories to expose (use positional 'source' instead)",
     )
 
-    # Mount point (required)
-    parser.add_argument(
+    # Mount point (legacy)
+    legacy_group.add_argument(
         "-m",
-        "--mount",
+        "--mount-point",
         metavar="DIR",
         type=str,
-        required=True,
-        help="Mount point directory (required)",
+        dest="mount_flag",
+        help="Mount point directory (use positional 'mount' instead)",
     )
 
     # Filesystem options
@@ -128,6 +259,7 @@ For more information, see: https://github.com/andronics/shadowfs
     log_group = parser.add_argument_group("logging options")
 
     log_group.add_argument(
+        "-f",
         "--foreground",
         action="store_true",
         help="Run in foreground (don't daemonize)",
@@ -160,6 +292,59 @@ For more information, see: https://github.com/andronics/shadowfs
     # Parse arguments
     parsed = parser.parse_args(args)
 
+    # Handle positional vs flag arguments (backward compatibility)
+    # Priority: positional args > flag args
+    if parsed.source and not parsed.sources:
+        parsed.sources = [parsed.source]
+    elif parsed.sources and not parsed.source:
+        parsed.source = parsed.sources[0] if parsed.sources else None
+    elif parsed.source and parsed.sources:
+        # Both specified - warn but use positional
+        print("Warning: Both positional 'source' and --sources specified, using positional", file=sys.stderr)
+        parsed.sources = [parsed.source]
+
+    if parsed.mount and not hasattr(parsed, 'mount_flag'):
+        # Positional mount is set
+        parsed.mount_point = parsed.mount
+    elif hasattr(parsed, 'mount_flag') and parsed.mount_flag and not parsed.mount:
+        # Legacy --mount-point is set
+        parsed.mount_point = parsed.mount_flag
+        parsed.mount = parsed.mount_flag
+    elif parsed.mount and hasattr(parsed, 'mount_flag') and parsed.mount_flag:
+        # Both specified - warn but use positional
+        print("Warning: Both positional 'mount' and --mount-point specified, using positional", file=sys.stderr)
+        parsed.mount_point = parsed.mount
+    else:
+        parsed.mount_point = parsed.mount
+
+    # Parse mount options if provided (-o flag)
+    if parsed.options:
+        mount_opts = parse_mount_options(parsed.options)
+
+        # Apply parsed options to args (they override individual flags)
+        for key, value in mount_opts.items():
+            # Map common option names to arg attributes
+            if key == 'ro' and value:
+                parsed.read_write = False
+            elif key == 'rw' and value:
+                parsed.read_write = True
+            elif key == 'allow_other':
+                parsed.allow_other = value
+            elif key == 'debug':
+                parsed.debug = value
+            elif key == 'foreground' or key == 'f':
+                parsed.foreground = value
+            # Store all mount options for later use
+            if not hasattr(parsed, 'mount_options'):
+                parsed.mount_options = {}
+            parsed.mount_options[key] = value
+
+    # Auto-discover config if not specified
+    if not parsed.config:
+        discovered = discover_config()
+        if discovered:
+            parsed.config = discovered
+
     # Validate arguments
     _validate_arguments(parsed)
 
@@ -179,24 +364,34 @@ def _validate_arguments(args: argparse.Namespace) -> None:
     # Either config or sources must be specified
     if not args.config and not args.sources:
         raise CLIError(
-            "Either --config or --sources must be specified\n" "Use --help for usage information"
+            "Either --config or source directory must be specified\n"
+            "Usage: shadowfs /source /mount  or  shadowfs --sources /source --mount /mount\n"
+            "Use --help for more information"
         )
 
-    # Validate mount point
-    mount_path = Path(args.mount)
+    # Validate mount point (use mount_point if set, otherwise mount)
+    mount_dir = args.mount_point if hasattr(args, 'mount_point') and args.mount_point else args.mount
+    if not mount_dir:
+        raise CLIError(
+            "Mount point must be specified\n"
+            "Usage: shadowfs /source /mount\n"
+            "Use --help for more information"
+        )
+
+    mount_path = Path(mount_dir)
 
     # Mount point must exist
     if not mount_path.exists():
-        raise CLIError(f"Mount point does not exist: {args.mount}")
+        raise CLIError(f"Mount point does not exist: {mount_dir}")
 
     # Mount point must be a directory
     if not mount_path.is_dir():
-        raise CLIError(f"Mount point is not a directory: {args.mount}")
+        raise CLIError(f"Mount point is not a directory: {mount_dir}")
 
     # Mount point must be empty (safety check)
     if list(mount_path.iterdir()):
         raise CLIError(
-            f"Mount point is not empty: {args.mount}\n"
+            f"Mount point is not empty: {mount_dir}\n"
             "For safety, ShadowFS requires an empty mount point"
         )
 

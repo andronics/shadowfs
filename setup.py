@@ -49,8 +49,7 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "shadowfs=shadowfs.application.shadowfs_main:main",
-            "shadowfs-ctl=shadowfs.application.cli:main",
+            "shadowfs=shadowfs.cli:main",
         ],
     },
 )
