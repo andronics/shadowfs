@@ -304,7 +304,7 @@ shadowfs/
 │   │
 │   ├── fuse/                          # FUSE interface (complete feature)
 │   │   ├── __init__.py
-│   │   ├── operations.py              # ShadowFSOperations (was application/fuse_operations.py)
+│   │   ├── operations.py              # ShadowFS (was application/fuse_operations.py)
 │   │   └── control.py                 # ControlServer (was application/control_server.py)
 │   │
 │   ├── cli.py                         # CLI entry point (was application/cli.py)
@@ -373,7 +373,7 @@ from shadowfs.transforms import TransformPipeline
 from shadowfs.transforms.compression import CompressionTransform
 
 # FUSE interface
-from shadowfs.fuse import ShadowFSOperations, ControlServer
+from shadowfs.fuse import ShadowFS, ControlServer
 
 # Entry points
 from shadowfs import cli, main

@@ -26,7 +26,7 @@ from fuse import FUSE
 from shadowfs.core.cache import CacheConfig, CacheManager
 from shadowfs.core.config import ConfigManager
 from shadowfs.core.logging import Logger
-from shadowfs.fuse.operations import ShadowFSOperations
+from shadowfs.fuse.operations import ShadowFS
 from shadowfs.layers.manager import LayerManager
 from shadowfs.rules.engine import Rule, RuleAction, RuleEngine
 from shadowfs.transforms.pipeline import TransformPipeline
@@ -60,7 +60,7 @@ class ShadowFSMain:
         self.rule_engine: Optional[RuleEngine] = None
         self.transform_pipeline: Optional[TransformPipeline] = None
         self.layer_manager: Optional[LayerManager] = None
-        self.fuse_ops: Optional[ShadowFSOperations] = None
+        self.fuse_ops: Optional[ShadowFS] = None
 
     def initialize_components(self) -> None:
         """
@@ -72,7 +72,7 @@ class ShadowFSMain:
         - RuleEngine
         - TransformPipeline
         - LayerManager
-        - ShadowFSOperations
+        - ShadowFS
 
         Raises:
             Exception: If component initialization fails
@@ -163,8 +163,8 @@ class ShadowFSMain:
                 self.logger.warning(f"Failed to load virtual layer: {e}")
 
         # 6. FUSE Operations
-        self.logger.debug("Creating ShadowFSOperations")
-        self.fuse_ops = ShadowFSOperations(
+        self.logger.debug("Creating ShadowFS")
+        self.fuse_ops = ShadowFS(
             config=self.config_manager,
             layer_manager=self.layer_manager,
             rule_engine=self.rule_engine,

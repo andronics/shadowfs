@@ -174,7 +174,7 @@ class TestComponentInitialization:
         assert len(main.layer_manager.sources) == 1
 
     def test_initializes_fuse_operations(self, mock_args, basic_config, logger):
-        """Initializes ShadowFSOperations with all components."""
+        """Initializes ShadowFS with all components."""
         main = ShadowFSMain(mock_args, basic_config, logger)
 
         main.initialize_components()

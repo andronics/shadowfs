@@ -19,7 +19,7 @@ import pytest
 from shadowfs.core.cache import CacheConfig, CacheLevel, CacheManager
 from shadowfs.core.config import ConfigManager
 from shadowfs.core.logging import Logger
-from shadowfs.fuse.operations import ShadowFSOperations
+from shadowfs.fuse.operations import ShadowFS
 from shadowfs.layers.classifier import ClassifierLayer
 from shadowfs.layers.manager import LayerManager
 from shadowfs.main import ShadowFSMain
@@ -105,7 +105,7 @@ def layer_manager(temp_dirs):
 @pytest.fixture
 def fuse_ops(config_manager, cache_manager, rule_engine, transform_pipeline, layer_manager):
     """Create FUSE operations with all components."""
-    return ShadowFSOperations(
+    return ShadowFS(
         config=config_manager,
         cache=cache_manager,
         rule_engine=rule_engine,

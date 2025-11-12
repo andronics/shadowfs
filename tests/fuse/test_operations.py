@@ -23,7 +23,7 @@ from fuse import FuseOSError
 
 from shadowfs.core.cache import CacheConfig, CacheManager
 from shadowfs.core.config import ConfigManager
-from shadowfs.fuse.operations import FileHandle, ShadowFSOperations
+from shadowfs.fuse.operations import FileHandle, ShadowFS
 from shadowfs.layers.manager import LayerManager
 from shadowfs.rules.engine import Rule, RuleAction, RuleEngine
 from shadowfs.transforms.pipeline import TransformPipeline
@@ -72,12 +72,12 @@ def config(source_dir):
 @pytest.fixture
 def fuse_ops(config):
     """Create FUSE operations instance."""
-    ops = ShadowFSOperations(config)
+    ops = ShadowFS(config)
     return ops
 
 
-class TestShadowFSOperationsInit:
-    """Test ShadowFSOperations initialization."""
+class TestShadowFSInit:
+    """Test ShadowFS initialization."""
 
     def test_init_with_all_dependencies(self, config):
         """Can initialize with all dependencies provided."""
@@ -86,7 +86,7 @@ class TestShadowFSOperationsInit:
         transform_pipeline = TransformPipeline()
         cache = CacheManager()  # Uses default multi-level cache config
 
-        ops = ShadowFSOperations(
+        ops = ShadowFS(
             config=config,
             layer_manager=vlm,
             rule_engine=rule_engine,
@@ -102,7 +102,7 @@ class TestShadowFSOperationsInit:
 
     def test_init_creates_dependencies(self, config):
         """Creates dependencies if not provided."""
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         assert ops.layer_manager is not None
         assert ops.rule_engine is not None
@@ -114,14 +114,14 @@ class TestShadowFSOperationsInit:
         config._config["readonly"] = False
         config._config["allow_other"] = True
 
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         assert ops.readonly is False
         assert ops.allow_other is True
 
     def test_init_initializes_file_handle_tracking(self, config):
         """Initializes file handle tracking structures."""
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         assert ops.fds == {}
         assert ops.fd_counter == 0
@@ -335,7 +335,7 @@ class TestStatfsOperation:
     def test_statfs_no_sources(self, config):
         """Raises ENOENT if no sources configured."""
         config._config["sources"] = []
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         with pytest.raises(FuseOSError) as exc_info:
             ops.statfs("/")
@@ -473,7 +473,7 @@ class TestMkdirOperation:
     def test_mkdir_creates_directory(self, config, source_dir):
         """Creates directory in writable mode."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         ops.mkdir("/newdir", 0o755)
 
@@ -483,7 +483,7 @@ class TestMkdirOperation:
     def test_mkdir_nonexistent_parent(self, config):
         """Raises ENOENT if parent doesn't exist."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         with pytest.raises(FuseOSError) as exc_info:
             ops.mkdir("/nonexistent/newdir", 0o755)
@@ -493,7 +493,7 @@ class TestMkdirOperation:
     def test_mkdir_invalidates_cache(self, config, source_dir):
         """Invalidates directory listing cache."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         # Cache parent directory listing
         from shadowfs.core.cache import CacheLevel
@@ -523,7 +523,7 @@ class TestRmdirOperation:
     def test_rmdir_removes_directory(self, config, source_dir):
         """Removes directory in writable mode."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         # Create a test directory
         test_dir = source_dir / "testdir"
@@ -536,7 +536,7 @@ class TestRmdirOperation:
     def test_rmdir_nonexistent_directory(self, config):
         """Raises ENOENT for nonexistent directory."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         with pytest.raises(FuseOSError) as exc_info:
             ops.rmdir("/nonexistent")
@@ -546,7 +546,7 @@ class TestRmdirOperation:
     def test_rmdir_nonempty_directory(self, config, source_dir):
         """Raises ENOTEMPTY for non-empty directory."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         with pytest.raises(FuseOSError) as exc_info:
             ops.rmdir("/subdir")  # Has file3.txt
@@ -556,7 +556,7 @@ class TestRmdirOperation:
     def test_rmdir_invalidates_caches(self, config, source_dir):
         """Invalidates all relevant caches."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         # Create test directory
         test_dir = source_dir / "testdir"
@@ -753,7 +753,7 @@ class TestEdgeCases:
     def test_mkdir_with_existing_directory(self, config, source_dir):
         """Raises EEXIST when creating existing directory."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         with pytest.raises(FuseOSError) as exc_info:
             ops.mkdir("/subdir", 0o755)  # subdir already exists
@@ -959,7 +959,7 @@ class TestFileWrite:
     def test_write_file_content(self, config, source_dir):
         """Writes file content correctly."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         # Open for writing
         fh = ops.open("/file1.txt", os.O_WRONLY)
@@ -974,7 +974,7 @@ class TestFileWrite:
     def test_write_invalidates_cache(self, config, source_dir):
         """Invalidates content and attr cache after write."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         # Pre-populate cache
         from shadowfs.core.cache import CacheLevel
@@ -997,7 +997,7 @@ class TestFileWrite:
     def test_write_invalid_handle(self, config):
         """Raises EBADF for invalid file handle."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         with pytest.raises(FuseOSError) as exc_info:
             ops.write("/file1.txt", b"test", 0, 999)
@@ -1037,7 +1037,7 @@ class TestFileCreate:
     def test_create_new_file(self, config, source_dir):
         """Creates new file successfully."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         fh = ops.create("/newfile.txt", 0o644)
 
@@ -1049,7 +1049,7 @@ class TestFileCreate:
     def test_create_invalidates_directory_cache(self, config, source_dir):
         """Invalidates parent directory cache."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         # Pre-populate directory cache
         from shadowfs.core.cache import CacheLevel
@@ -1067,7 +1067,7 @@ class TestFileCreate:
     def test_create_nonexistent_parent(self, config):
         """Raises ENOENT when parent directory doesn't exist."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         with pytest.raises(FuseOSError) as exc_info:
             ops.create("/nonexistent/newfile.txt", 0o644)
@@ -1088,7 +1088,7 @@ class TestFileUnlink:
     def test_unlink_file(self, config, source_dir):
         """Deletes file successfully."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         # Create a file to delete
         (source_dir / "todelete.txt").write_text("delete me")
@@ -1100,7 +1100,7 @@ class TestFileUnlink:
     def test_unlink_nonexistent_file(self, config):
         """Raises ENOENT for nonexistent file."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         with pytest.raises(FuseOSError) as exc_info:
             ops.unlink("/nonexistent.txt")
@@ -1110,7 +1110,7 @@ class TestFileUnlink:
     def test_unlink_invalidates_caches(self, config, source_dir):
         """Invalidates all relevant caches."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         from shadowfs.core.cache import CacheLevel
 
@@ -1147,7 +1147,7 @@ class TestChmod:
     def test_chmod_file(self, config, source_dir):
         """Changes file permissions successfully."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         ops.chmod("/file1.txt", 0o755)
 
@@ -1158,7 +1158,7 @@ class TestChmod:
     def test_chmod_nonexistent_file(self, config):
         """Raises ENOENT for nonexistent file."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         with pytest.raises(FuseOSError) as exc_info:
             ops.chmod("/nonexistent.txt", 0o755)
@@ -1168,7 +1168,7 @@ class TestChmod:
     def test_chmod_invalidates_attr_cache(self, config, source_dir):
         """Invalidates attribute cache."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         from shadowfs.core.cache import CacheLevel
 
@@ -1193,7 +1193,7 @@ class TestChown:
     def test_chown_nonexistent_file(self, config):
         """Raises ENOENT for nonexistent file."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         with pytest.raises(FuseOSError) as exc_info:
             ops.chown("/nonexistent.txt", 1000, 1000)
@@ -1203,7 +1203,7 @@ class TestChown:
     def test_chown_invalidates_attr_cache(self, config, source_dir):
         """Invalidates attribute cache."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         from shadowfs.core.cache import CacheLevel
 
@@ -1231,7 +1231,7 @@ class TestUtimens:
     def test_utimens_with_none(self, config, source_dir):
         """Updates to current time when times=None."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         import time
 
@@ -1247,7 +1247,7 @@ class TestUtimens:
     def test_utimens_with_tuple(self, config, source_dir):
         """Updates to specified times."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         atime = 1000000000.0
         mtime = 1100000000.0
@@ -1261,7 +1261,7 @@ class TestUtimens:
     def test_utimens_with_nanoseconds(self, config, source_dir):
         """Handles nanosecond precision times."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         # Format: ((atime_sec, atime_nsec), (mtime_sec, mtime_nsec))
         times = ((1000000000, 123456789), (1100000000, 987654321))
@@ -1275,7 +1275,7 @@ class TestUtimens:
     def test_utimens_nonexistent_file(self, config):
         """Raises ENOENT for nonexistent file."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         with pytest.raises(FuseOSError) as exc_info:
             ops.utimens("/nonexistent.txt", None)
@@ -1285,7 +1285,7 @@ class TestUtimens:
     def test_utimens_invalidates_attr_cache(self, config, source_dir):
         """Invalidates attribute cache."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         from shadowfs.core.cache import CacheLevel
 
@@ -1334,7 +1334,7 @@ class TestAccess:
         # Make file executable
         (source_dir / "file1.txt").chmod(0o755)
 
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         # Should not raise exception
         ops.access("/file1.txt", os.X_OK)
@@ -1344,7 +1344,7 @@ class TestAccess:
         # Make file non-executable
         (source_dir / "file1.txt").chmod(0o600)
 
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         # Check for execute permission on non-executable file
         with pytest.raises(FuseOSError) as exc_info:
@@ -1359,7 +1359,7 @@ class TestFsync:
     def test_fsync_full(self, config, source_dir):
         """Syncs file data and metadata."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         fh = ops.open("/file1.txt", os.O_RDWR)
 
@@ -1371,7 +1371,7 @@ class TestFsync:
     def test_fsync_data_only(self, config, source_dir):
         """Syncs file data only."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         fh = ops.open("/file1.txt", os.O_RDWR)
 
@@ -1421,7 +1421,7 @@ class TestExceptionHandling:
     def test_write_os_error(self, config, source_dir):
         """Handles OSError during write()."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         fh = ops.open("/file1.txt", os.O_WRONLY)
 
@@ -1437,7 +1437,7 @@ class TestExceptionHandling:
     def test_create_os_error(self, config, source_dir):
         """Handles OSError during create()."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         # Mock os.open to raise OSError
         with patch("os.open", side_effect=OSError(errno.EEXIST, "File exists")):
@@ -1449,7 +1449,7 @@ class TestExceptionHandling:
     def test_unlink_os_error(self, config, source_dir):
         """Handles OSError during unlink()."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         # Mock os.unlink to raise OSError
         with patch("os.unlink", side_effect=OSError(errno.EBUSY, "File busy")):
@@ -1461,7 +1461,7 @@ class TestExceptionHandling:
     def test_chmod_os_error(self, config, source_dir):
         """Handles OSError during chmod()."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         # Mock os.chmod to raise OSError
         with patch("os.chmod", side_effect=OSError(errno.EPERM, "Operation not permitted")):
@@ -1473,7 +1473,7 @@ class TestExceptionHandling:
     def test_chown_os_error(self, config, source_dir):
         """Handles OSError during chown()."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         # Mock os.chown to raise OSError
         with patch("os.chown", side_effect=OSError(errno.EPERM, "Operation not permitted")):
@@ -1485,7 +1485,7 @@ class TestExceptionHandling:
     def test_utimens_os_error(self, config, source_dir):
         """Handles OSError during utimens()."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         # Mock os.utime to raise OSError
         with patch("os.utime", side_effect=OSError(errno.EPERM, "Operation not permitted")):
@@ -1506,7 +1506,7 @@ class TestExceptionHandling:
     def test_fsync_os_error(self, config, source_dir):
         """Handles OSError during fsync()."""
         config._config["readonly"] = False
-        ops = ShadowFSOperations(config)
+        ops = ShadowFS(config)
 
         fh = ops.open("/file1.txt", os.O_RDWR)
 

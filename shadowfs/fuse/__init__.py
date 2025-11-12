@@ -1,22 +1,22 @@
 """ShadowFS FUSE Interface.
 
 This module implements the FUSE filesystem interface for ShadowFS:
-- ShadowFSOperations: FUSE callback implementations
+- ShadowFS: FUSE callback implementations
 - ControlServer: Runtime control and management API
 
 Usage:
-    from shadowfs.fuse import ShadowFSOperations
+    from shadowfs.fuse import ShadowFS
     from shadowfs.core import ConfigManager
 
     config = ConfigManager()
-    ops = ShadowFSOperations(config)
+    ops = ShadowFS(config)
 """
 
 from shadowfs.fuse.control import ControlServer
-from shadowfs.fuse.operations import FileHandle, ShadowFSOperations
+from shadowfs.fuse.operations import FileHandle, ShadowFS
 
 __all__ = [
-    "ShadowFSOperations",
+    "ShadowFS",
     "FileHandle",
     "ControlServer",
 ]

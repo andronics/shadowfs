@@ -45,7 +45,7 @@ class FileHandle:
     virtual_path: str  # Virtual path used to open file
 
 
-class ShadowFSOperations(Operations):
+class ShadowFS(Operations):
     """
     FUSE filesystem operations implementation for ShadowFS.
 

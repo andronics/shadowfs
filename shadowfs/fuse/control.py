@@ -24,7 +24,7 @@ from urllib.parse import parse_qs, urlparse
 
 from shadowfs.core.config import ConfigManager
 from shadowfs.core.logging import Logger
-from shadowfs.fuse.operations import ShadowFSOperations
+from shadowfs.fuse.operations import ShadowFS
 
 
 class ControlServerError(Exception):
@@ -373,7 +373,7 @@ class ControlServer:
 
     def __init__(
         self,
-        fuse_ops: Optional[ShadowFSOperations] = None,
+        fuse_ops: Optional[ShadowFS] = None,
         config_manager: Optional[ConfigManager] = None,
         host: str = "127.0.0.1",
         port: int = 8080,
