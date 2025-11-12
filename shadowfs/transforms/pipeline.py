@@ -56,7 +56,7 @@ class TransformPipeline:
 
         # Initialize cache if enabled
         if cache_enabled:
-            from shadowfs.core import CacheConfig, CacheLevel
+            from shadowfs.core.cache import CacheConfig, CacheLevel
 
             cache_config = CacheConfig(
                 max_entries=10000,
@@ -147,7 +147,7 @@ class TransformPipeline:
         # Check cache first
         if self._cache_enabled and not skip_cache:
             cache_key = self._get_cache_key(content, path)
-            from shadowfs.core import CacheLevel
+            from shadowfs.core.cache import CacheLevel
 
             cached = self._cache.get("transform", cache_key, CacheLevel.L3)
             if cached is not None:
@@ -211,7 +211,7 @@ class TransformPipeline:
         # Cache result if successful
         if self._cache_enabled and not skip_cache and all_success:
             cache_key = self._get_cache_key(content, path)
-            from shadowfs.core import CacheLevel
+            from shadowfs.core.cache import CacheLevel
 
             # Estimate size
             result_size = len(final_result.content) + 1024  # Content + metadata overhead
@@ -277,7 +277,7 @@ class TransformPipeline:
     def clear_cache(self) -> None:
         """Clear transform cache."""
         if self._cache:
-            from shadowfs.core import CacheLevel
+            from shadowfs.core.cache import CacheLevel
 
             self._cache.clear(CacheLevel.L3)
 

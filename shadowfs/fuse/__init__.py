@@ -6,7 +6,7 @@ This module implements the FUSE filesystem interface for ShadowFS:
 
 Usage:
     from shadowfs.fuse import ShadowFS
-    from shadowfs.core import ConfigManager
+    from shadowfs.core.config import ConfigManager
 
     config = ConfigManager()
     ops = ShadowFS(config)
