@@ -46,8 +46,7 @@ def validate_config(config: Dict[str, Any]) -> bool:
         raise ValidationError("Configuration must have 'version' field")
 
     version = config[ConfigKey.VERSION]
-    if not validate_version(version):
-        raise ValidationError(f"Invalid version format: {version}")
+    validate_version(version)  # Raises ValidationError on failure
 
     # Validate sources
     if ConfigKey.SOURCES in config:
@@ -56,8 +55,10 @@ def validate_config(config: Dict[str, Any]) -> bool:
             raise ValidationError("Sources must be a list")
 
         for i, source in enumerate(sources):
-            if not validate_source_config(source):
-                raise ValidationError(f"Invalid source configuration at index {i}")
+            try:
+                validate_source_config(source)
+            except ValidationError as e:
+                raise ValidationError(f"Invalid source configuration at index {i}: {e}")
 
     # Validate rules
     if ConfigKey.RULES in config:
@@ -66,8 +67,10 @@ def validate_config(config: Dict[str, Any]) -> bool:
             raise ValidationError("Rules must be a list")
 
         for i, rule in enumerate(rules):
-            if not validate_rule_config(rule):
-                raise ValidationError(f"Invalid rule configuration at index {i}")
+            try:
+                validate_rule_config(rule)
+            except ValidationError as e:
+                raise ValidationError(f"Invalid rule configuration at index {i}: {e}")
 
     # Validate transforms
     if ConfigKey.TRANSFORMS in config:
@@ -76,8 +79,10 @@ def validate_config(config: Dict[str, Any]) -> bool:
             raise ValidationError("Transforms must be a list")
 
         for i, transform in enumerate(transforms):
-            if not validate_transform_config(transform):
-                raise ValidationError(f"Invalid transform configuration at index {i}")
+            try:
+                validate_transform_config(transform)
+            except ValidationError as e:
+                raise ValidationError(f"Invalid transform configuration at index {i}: {e}")
 
     # Validate virtual layers
     if ConfigKey.VIRTUAL_LAYERS in config:
@@ -86,14 +91,15 @@ def validate_config(config: Dict[str, Any]) -> bool:
             raise ValidationError("Virtual layers must be a list")
 
         for i, layer in enumerate(layers):
-            if not validate_virtual_layer_config(layer):
-                raise ValidationError(f"Invalid virtual layer configuration at index {i}")
+            try:
+                validate_virtual_layer_config(layer)
+            except ValidationError as e:
+                raise ValidationError(f"Invalid virtual layer configuration at index {i}: {e}")
 
     # Validate cache config
     if ConfigKey.CACHE in config:
         cache = config[ConfigKey.CACHE]
-        if not validate_cache_config(cache):
-            raise ValidationError("Invalid cache configuration")
+        validate_cache_config(cache)  # Raises ValidationError on failure
 
     return True
 
