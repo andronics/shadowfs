@@ -673,3 +673,29 @@ class TestIntegration:
         manager.add_layer(layer2)
         assert "test" in manager.layers
         assert manager.layers["test"] is layer2
+
+    def test_scan_sources_with_permission_error(self, tmp_path, monkeypatch):
+        """Test scan_sources gracefully handles files that can't be read."""
+        src = tmp_path / "source"
+        src.mkdir()
+
+        # Create some normal files
+        (src / "file1.txt").write_text("content 1")
+        (src / "file2.txt").write_text("content 2")
+
+        # Mock FileInfo.from_path to raise PermissionError for file2
+        original_from_path = FileInfo.from_path
+
+        def mock_from_path(real_path, source_root):
+            if "file2.txt" in real_path:
+                raise PermissionError("Access denied")
+            return original_from_path(real_path, source_root)
+
+        monkeypatch.setattr(FileInfo, "from_path", mock_from_path)
+
+        manager = VirtualLayerManager([str(src)])
+        manager.scan_sources()
+
+        # Should only have file1, file2 should be skipped
+        assert len(manager.files) == 1
+        assert manager.files[0].name == "file1.txt"

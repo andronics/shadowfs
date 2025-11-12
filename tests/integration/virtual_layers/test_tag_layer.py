@@ -972,3 +972,27 @@ class TestTagLayerEdgeCases:
         assert "another" in layer.index
         assert 123 not in layer.index  # type: ignore[comparison-overlap]
         assert None not in layer.index  # type: ignore[comparison-overlap]
+
+    def test_sidecar_json_decode_error(self, tmp_path):
+        """Test sidecar extractor when JSON parsing fails."""
+        src = tmp_path / "source"
+        src.mkdir()
+
+        file_path = src / "test.txt"
+        file_path.write_text("content")
+
+        # Create sidecar file with invalid JSON that starts with "["
+        sidecar_path = src / "test.txt.tags"
+        sidecar_path.write_text('[invalid, json, syntax')  # Starts with [ but invalid JSON
+
+        extractor = BuiltinExtractors.sidecar(".tags")
+        file_info = FileInfo.from_path(str(file_path), str(src))
+
+        tags = extractor(file_info)
+
+        # Should fall back to comma-separated parsing
+        # Content is "[invalid, json, syntax"
+        # Split by comma gives: ["[invalid", " json", " syntax"]
+        # After stripping: ["[invalid", "json", "syntax"]
+        assert "json" in tags
+        assert "syntax" in tags

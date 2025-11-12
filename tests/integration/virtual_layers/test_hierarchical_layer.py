@@ -1268,3 +1268,75 @@ class TestComplexHierarchies:
         assert layer.list_directory("A/B/C") == ["D"]
         assert layer.list_directory("A/B/C/D") == ["file.txt"]
         assert layer.resolve("A/B/C/D/file.txt") == "/file.txt"
+
+    def test_corrupted_index_structure(self):
+        """Test defensive checks for corrupted index structure."""
+
+        def classifier(f):
+            return "cat"
+
+        layer = HierarchicalLayer("layer", [classifier])
+
+        files = [
+            FileInfo(
+                name="test.txt",
+                path="test.txt",
+                real_path="/test.txt",
+                extension=".txt",
+                size=100,
+                mtime=1.0,
+                ctime=1.0,
+                atime=1.0,
+                mode=stat.S_IFREG | 0o644,
+            )
+        ]
+
+        layer.build_index(files)
+
+        # Manually corrupt the index to test defensive checks
+        # Replace the category dict with a non-dict value (e.g., a list)
+        # This triggers the isinstance(current, dict) check in list_directory
+        layer.index["cat"] = ["corrupted_value"]  # Not a dict
+
+        # list_directory should handle this gracefully
+        result = layer.list_directory("cat")
+        assert result == []  # Should return empty list when current is not a dict
+
+        # Rebuild for next test
+        layer.build_index(files)
+
+        # Corrupt differently for _get_files_at_path
+        layer.index["cat"] = "string_instead_of_dict"
+
+        # _get_files_at_path should also handle this
+        result = layer._get_files_at_path(["cat"])
+        assert result is None  # Returns None when path doesn't exist properly
+
+    def test_classifiers_all_return_empty(self):
+        """Test when all classifiers succeed but return empty strings."""
+
+        def classifier_returns_empty(f):
+            return ""  # Returns empty string (not None)
+
+        layer = HierarchicalLayer("layer", [classifier_returns_empty])
+
+        files = [
+            FileInfo(
+                name="test.txt",
+                path="test.txt",
+                real_path="/test.txt",
+                extension=".txt",
+                size=100,
+                mtime=1.0,
+                ctime=1.0,
+                atime=1.0,
+                mode=stat.S_IFREG | 0o644,
+            )
+        ]
+
+        layer.build_index(files)
+
+        # The file should not be indexed because all categories are empty
+        # This triggers the `if categories:` check (line 116)
+        assert layer.index == {}  # No files indexed
+        assert layer.list_directory("") == []

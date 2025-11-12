@@ -989,6 +989,35 @@ class TestBuiltinClassifierGitStatus:
 
         assert result == "unknown"
 
+    @patch("subprocess.run")
+    def test_git_status_unknown_status_code(self, mock_run):
+        """Test Git status with unrecognized status code."""
+
+        def run_side_effect(*args, **kwargs):
+            if "check-ignore" in args[0]:
+                raise subprocess.CalledProcessError(1, "check-ignore")
+            else:
+                # Return unrecognized status code
+                return MagicMock(returncode=0, stdout="XY test.txt\n")
+
+        mock_run.side_effect = run_side_effect
+
+        file_info = FileInfo(
+            name="test.txt",
+            path="test.txt",
+            real_path="/test.txt",
+            extension=".txt",
+            size=100,
+            mtime=1.0,
+            ctime=1.0,
+            atime=1.0,
+            mode=stat.S_IFREG | 0o644,
+        )
+
+        result = BuiltinClassifiers.git_status(file_info)
+
+        assert result == "unknown"
+
 
 class TestBuiltinClassifierPattern:
     """Test pattern classifier."""

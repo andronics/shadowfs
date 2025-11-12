@@ -495,6 +495,28 @@ class TestFileInfoEdgeCases:
         file_dict = {info: "metadata"}
         assert file_dict[info] == "metadata"
 
+    def test_fileinfo_from_path_windows_different_drives(self, temp_dir, monkeypatch):
+        """Test FileInfo.from_path when paths are on different drives (Windows)."""
+        # Create a test file
+        test_file = temp_dir / "test.txt"
+        test_file.write_text("content")
+
+        # Mock os.path.relpath to raise ValueError (simulates different drives on Windows)
+        original_relpath = os.path.relpath
+
+        def mock_relpath(path, start):
+            raise ValueError("path is on mount 'C:', start on mount 'D:'")
+
+        monkeypatch.setattr(os.path, "relpath", mock_relpath)
+
+        # Should fall back to using real_path as path
+        info = FileInfo.from_path(str(test_file), str(temp_dir))
+        assert info.path == str(test_file)
+        assert info.name == "test.txt"
+
+        # Restore
+        monkeypatch.setattr(os.path, "relpath", original_relpath)
+
 
 # Fixtures
 @pytest.fixture
