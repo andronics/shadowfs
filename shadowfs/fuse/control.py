@@ -236,12 +236,12 @@ class ControlRequestHandler(http.server.BaseHTTPRequestHandler):
         """Handle virtual layers list endpoint."""
         fuse_ops = self.server.fuse_ops
 
-        if not fuse_ops or not fuse_ops.virtual_layer_manager:
+        if not fuse_ops or not fuse_ops.layer_manager:
             self._send_error_response("Virtual layer manager not available", 503)
             return
 
         try:
-            layer_count = len(fuse_ops.virtual_layer_manager.layers)
+            layer_count = len(fuse_ops.layer_manager.layers)
             self._send_json_response({"layer_count": layer_count, "success": True})
         except Exception as e:
             self._send_error_response(f"Failed to list layers: {e}", 500)

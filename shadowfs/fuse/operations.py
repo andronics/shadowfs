@@ -67,7 +67,7 @@ class ShadowFS(Operations):
     def __init__(
         self,
         config: ConfigManager,
-        virtual_layer_manager: Optional[LayerManager] = None,
+        layer_manager: Optional[LayerManager] = None,
         rule_engine: Optional[RuleEngine] = None,
         transform_pipeline: Optional[TransformPipeline] = None,
         cache: Optional[CacheManager] = None,
@@ -77,7 +77,7 @@ class ShadowFS(Operations):
 
         Args:
             config: Configuration manager
-            virtual_layer_manager: Virtual layer manager (created if None)
+            layer_manager: Virtual layer manager (created if None)
             rule_engine: Rule engine for filtering (created if None)
             transform_pipeline: Transform pipeline (created if None)
             cache: Cache manager (created if None)
@@ -88,8 +88,8 @@ class ShadowFS(Operations):
         # Initialize managers with defaults
         # (Detailed configuration loading delegated to caller)
         # Note: Use explicit None checks because some objects have __len__ that can return 0
-        self.virtual_layer_manager = (
-            virtual_layer_manager if virtual_layer_manager is not None else LayerManager()
+        self.layer_manager = (
+            layer_manager if layer_manager is not None else LayerManager()
         )
         self.rule_engine = rule_engine if rule_engine is not None else RuleEngine()
         self.transform_pipeline = (
@@ -139,7 +139,7 @@ class ShadowFS(Operations):
 
         # Try virtual layer manager
         try:
-            real_path = self.virtual_layer_manager.resolve_path(virtual_path)
+            real_path = self.layer_manager.resolve_path(virtual_path)
         except Exception as e:
             self.logger.warning(f"Path resolution failed for {virtual_path}: {e}")
             real_path = None
@@ -325,7 +325,7 @@ class ShadowFS(Operations):
 
         # Check if this is a virtual layer directory
         try:
-            virtual_entries = self.virtual_layer_manager.list_directory(path)
+            virtual_entries = self.layer_manager.list_directory(path)
             if virtual_entries:
                 # Filter entries through rule engine
                 filtered = []
@@ -937,6 +937,6 @@ class ShadowFS(Operations):
             "open_files": len(self.fds),
             "cache_size": len(self.cache.caches) if hasattr(self.cache, "caches") else 0,
             "sources": len(sources),
-            "virtual_layers": len(self.virtual_layer_manager.layers),
+            "virtual_layers": len(self.layer_manager.layers),
             "readonly": self.readonly,
         }
