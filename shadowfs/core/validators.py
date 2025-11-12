@@ -282,6 +282,12 @@ def validate_cache_config(cache: Dict[str, Any]) -> bool:
     if not isinstance(cache, dict):
         raise ValidationError("Cache configuration must be a dictionary")
 
+    # Check for unknown fields
+    valid_fields = {ConfigKey.CACHE_ENABLED, ConfigKey.CACHE_SIZE_MB, ConfigKey.CACHE_TTL}
+    unknown_fields = set(cache.keys()) - valid_fields
+    if unknown_fields:
+        raise ValidationError(f"Unknown cache configuration fields: {', '.join(unknown_fields)}")
+
     # Optional field: enabled (boolean)
     if ConfigKey.CACHE_ENABLED in cache:
         enabled = cache[ConfigKey.CACHE_ENABLED]
