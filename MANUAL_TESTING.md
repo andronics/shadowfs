@@ -45,11 +45,11 @@ rm -rf /tmp/shadowfs-demo
 
 ```bash
 # Run directly with Python
-python -m shadowfs.application.shadowfs_main --help
-python -m shadowfs.application.shadowfs_main --version
+python -m shadowfs.main --help
+python -m shadowfs.main --version
 
 # Or run the module
-PYTHONPATH=. python shadowfs/application/shadowfs_main.py --help
+PYTHONPATH=. python shadowfs/main.py --help
 ```
 
 ## Method 3: Test with Configuration File
@@ -94,7 +94,7 @@ cat /tmp/test-mount/config-test.txt
 ```bash
 # Start Python REPL with CLI imported
 python3 << 'EOF'
-from shadowfs.application.cli import parse_arguments, validate_runtime_environment
+from shadowfs.cli import parse_arguments, validate_runtime_environment
 
 # Test argument parsing
 args = parse_arguments(['--sources', '/tmp', '--mount', '/tmp/mnt'])
@@ -203,7 +203,7 @@ pip install -e .
 which shadowfs
 
 # If not, try:
-python -m shadowfs.application.shadowfs_main --help
+python -m shadowfs.main --help
 ```
 
 ### FUSE not available
