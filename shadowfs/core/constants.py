@@ -1,13 +1,12 @@
 """
-ShadowFS Foundation: Constants and Type Definitions
+ShadowFS Foundation: Constants and Type Definitions.
 
 This module provides system-wide constants, error codes, and type definitions
 following Meta-Architecture v1.0.0 principles.
 """
 from dataclasses import dataclass
 from enum import Enum, IntEnum
-from pathlib import Path as PathType
-from typing import NewType, Optional, TypeAlias
+from typing import NewType, TypeAlias
 
 # Version information
 SHADOWFS_VERSION = "1.0.0"
@@ -87,7 +86,7 @@ class Limits:
     """System resource limits and default values."""
 
     # File size limits
-    MAX_FILE_SIZE = 1024 * 1024 * 1024  # 1GB
+    MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024  # 2GB
     MAX_TRANSFORM_OUTPUT = 100 * 1024 * 1024  # 100MB
 
     # Path limits
@@ -98,6 +97,7 @@ class Limits:
     # Time limits
     MAX_TRANSFORM_TIME = 30  # seconds
     DEFAULT_OPERATION_TIMEOUT = 5  # seconds
+    MAX_TIMEOUT = 7200  # 2 hours
 
     # Memory limits
     MAX_MEMORY_PER_TRANSFORM = 100 * 1024 * 1024  # 100MB

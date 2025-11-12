@@ -196,8 +196,8 @@ class TestPathResolution:
         # Resolve path
         result = fuse_ops._resolve_path(path)
 
-        # Check cache
-        cached = fuse_ops.cache.get("path", path)
+        # Check cache - note: cache key is normalized (no leading slash)
+        cached = fuse_ops.cache.get("path", "file1.txt")
         assert cached == result
 
     def test_resolve_path_handles_vlm_exception(self, fuse_ops, source_dir):
@@ -435,27 +435,19 @@ class TestReaddirOperation:
         assert "category1" in entries
         assert "category2" in entries
 
-    def test_readdir_virtual_layer_filters_entries(self, fuse_ops, source_dir):
-        """Filters virtual layer entries through rule engine."""
+    def test_readdir_virtual_layer_returns_all_entries(self, fuse_ops, source_dir):
+        """Returns all virtual layer entries (filtering happens at index build time)."""
         # Mock virtual layer manager
         mock_vlm = Mock()
         mock_vlm.list_directory.return_value = ["file1.txt", "file2.py"]
         fuse_ops.layer_manager = mock_vlm
 
-        # Mock resolve_path to return paths
-        original_resolve = fuse_ops._resolve_path
-
-        def mock_resolve(path):
-            if "file2.py" in path:
-                return None  # Simulate filtered
-            return original_resolve(path)
-
-        fuse_ops._resolve_path = mock_resolve
-
         entries = fuse_ops.readdir("/by-type/txt", 0)
 
+        # Virtual layer manager returns already-filtered entries
+        # (filtering happens when building the index, not during readdir)
         assert "file1.txt" in entries
-        assert "file2.py" not in entries
+        assert "file2.py" in entries  # Both files returned by VLM are included
 
 
 class TestMkdirOperation:

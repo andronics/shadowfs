@@ -376,7 +376,9 @@ class TestVirtualLayerIntegration:
         layer_manager.rebuild_indexes()
 
         # Debug: Check if layer has files
-        assert len(layer.index) > 0, f"Layer index is empty. Files in manager: {len(layer_manager.files)}"
+        assert (
+            len(layer.index) > 0
+        ), f"Layer index is empty. Files in manager: {len(layer_manager.files)}"
 
         # List virtual directory
         entries = list(fuse_ops.readdir("/by-type", None))

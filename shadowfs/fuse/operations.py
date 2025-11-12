@@ -88,9 +88,7 @@ class ShadowFS(Operations):
         # Initialize managers with defaults
         # (Detailed configuration loading delegated to caller)
         # Note: Use explicit None checks because some objects have __len__ that can return 0
-        self.layer_manager = (
-            layer_manager if layer_manager is not None else LayerManager()
-        )
+        self.layer_manager = layer_manager if layer_manager is not None else LayerManager()
         self.rule_engine = rule_engine if rule_engine is not None else RuleEngine()
         self.transform_pipeline = (
             transform_pipeline if transform_pipeline is not None else TransformPipeline()

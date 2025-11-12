@@ -1,15 +1,13 @@
 """
-ShadowFS Foundation: Input Validators
+ShadowFS Foundation: Input Validators.
 
 This module provides comprehensive input validation functions for configuration,
 paths, patterns, and other user inputs.
 
 Following Meta-Architecture v1.0.0 principles.
 """
-import os
 import re
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Pattern, Union
+from typing import Any, Dict, Pattern, Union
 
 from shadowfs.core.constants import ConfigKey, ErrorCode, LayerType, Limits, RuleType, TransformType
 
@@ -186,6 +184,12 @@ def validate_rule_config(rule: Dict[str, Any]) -> bool:
             if not validate_pattern(pattern):
                 raise ValidationError(f"Invalid pattern in list: {pattern}")
 
+    # Optional field: priority (integer)
+    if "priority" in rule:
+        priority = rule["priority"]
+        if not isinstance(priority, int):
+            raise ValidationError(f"Rule priority must be integer: {priority}")
+
     return True
 
 
@@ -264,6 +268,12 @@ def validate_virtual_layer_config(layer: Dict[str, Any]) -> bool:
             f"Invalid virtual layer type: {layer_type}. Must be one of {valid_types}"
         )
 
+    # Optional field: enabled (boolean)
+    if "enabled" in layer:
+        enabled = layer["enabled"]
+        if not isinstance(enabled, bool):
+            raise ValidationError(f"Layer enabled must be boolean: {enabled}")
+
     return True
 
 
@@ -283,7 +293,12 @@ def validate_cache_config(cache: Dict[str, Any]) -> bool:
         raise ValidationError("Cache configuration must be a dictionary")
 
     # Check for unknown fields
-    valid_fields = {ConfigKey.CACHE_ENABLED, ConfigKey.CACHE_SIZE_MB, ConfigKey.CACHE_TTL}
+    valid_fields = {
+        ConfigKey.CACHE_ENABLED,
+        ConfigKey.CACHE_SIZE_MB,
+        ConfigKey.CACHE_TTL,
+        "eviction_policy",
+    }
     unknown_fields = set(cache.keys()) - valid_fields
     if unknown_fields:
         raise ValidationError(f"Unknown cache configuration fields: {', '.join(unknown_fields)}")
@@ -298,13 +313,24 @@ def validate_cache_config(cache: Dict[str, Any]) -> bool:
     if ConfigKey.CACHE_SIZE_MB in cache:
         size_mb = cache[ConfigKey.CACHE_SIZE_MB]
         if not isinstance(size_mb, (int, float)) or size_mb <= 0:
-            raise ValidationError(f"Cache size must be positive number: {size_mb}")
+            raise ValidationError(f"Cache max_size_mb must be positive number: {size_mb}")
 
     # Optional field: ttl_seconds (positive integer)
     if ConfigKey.CACHE_TTL in cache:
         ttl = cache[ConfigKey.CACHE_TTL]
         if not isinstance(ttl, (int, float)) or ttl <= 0:
             raise ValidationError(f"Cache TTL must be positive number: {ttl}")
+
+    # Optional field: eviction_policy (string: lru, lfu, fifo)
+    if "eviction_policy" in cache:
+        policy = cache["eviction_policy"]
+        if not isinstance(policy, str):
+            raise ValidationError(f"Cache eviction policy must be string: {policy}")
+        valid_policies = {"lru", "lfu", "fifo"}
+        if policy not in valid_policies:
+            raise ValidationError(
+                f"Invalid eviction policy: {policy}. Must be one of {valid_policies}"
+            )
 
     return True
 
@@ -339,6 +365,10 @@ def validate_path(path: str) -> bool:
     if any(ord(c) < 32 and c not in "\t\n\r" for c in path):
         raise ValidationError("Path contains control characters")
 
+    # Check for path traversal attempts
+    if ".." in path:
+        raise ValidationError("Path traversal not allowed")
+
     return True
 
 
@@ -360,9 +390,17 @@ def validate_pattern(pattern: str) -> bool:
     if not isinstance(pattern, str):
         raise ValidationError(f"Pattern must be string, got {type(pattern)}")
 
+    # Check length
+    if len(pattern) > Limits.MAX_PATH_LENGTH:
+        raise ValidationError(f"Pattern exceeds maximum length ({Limits.MAX_PATH_LENGTH})")
+
     # Check for null bytes
     if "\0" in pattern:
-        raise ValidationError("Pattern contains null bytes")
+        raise ValidationError("Invalid pattern: contains null bytes")
+
+    # Check for control characters
+    if any(ord(c) < 32 and c not in "\t\n\r" for c in pattern):
+        raise ValidationError("Invalid pattern: contains control characters")
 
     # Try to compile as regex to check validity
     if pattern.startswith("regex:"):
@@ -396,7 +434,8 @@ def validate_layer_name(name: str) -> bool:
     # Must be valid directory name
     if not re.match(r"^[a-zA-Z][a-zA-Z0-9_-]*$", name):
         raise ValidationError(
-            "Layer name must start with letter and contain only letters, numbers, underscore, and hyphen"
+            "Invalid layer name: must start with letter and contain only letters, "
+            "numbers, underscore, and hyphen"
         )
 
     # Check length
@@ -446,10 +485,10 @@ def validate_port(port: Union[int, str]) -> bool:
     try:
         port_num = int(port)
     except (ValueError, TypeError):
-        raise ValidationError(f"Port must be integer, got {type(port)}")
+        raise ValidationError(f"Port must be numeric, got {type(port)}")
 
     if port_num < 1 or port_num > 65535:
-        raise ValidationError(f"Port must be between 1 and 65535, got {port_num}")
+        raise ValidationError(f"Port must be in range 1-65535, got {port_num}")
 
     return True
 
@@ -467,7 +506,7 @@ def validate_file_size(size: Union[int, float]) -> bool:
         ValidationError: If size is invalid
     """
     if not isinstance(size, (int, float)):
-        raise ValidationError(f"Size must be number, got {type(size)}")
+        raise ValidationError(f"Size must be numeric, got {type(size)}")
 
     if size < 0:
         raise ValidationError(f"Size cannot be negative: {size}")
@@ -500,11 +539,11 @@ def validate_permissions(mode: Union[int, str]) -> bool:
         else:
             mode_int = int(mode)
     except (ValueError, TypeError):
-        raise ValidationError(f"Invalid permission mode: {mode}")
+        raise ValidationError(f"Invalid permission mode (must be octal): {mode}")
 
     # Check valid range (0-0777)
     if mode_int < 0 or mode_int > 0o777:
-        raise ValidationError(f"Permission mode out of range: {mode_int:o}")
+        raise ValidationError(f"Permission mode must be in range 0-777, got: {mode_int:o}")
 
     return True
 
@@ -527,7 +566,7 @@ def validate_regex(pattern: str) -> Pattern:
     try:
         return re.compile(pattern)
     except re.error as e:
-        raise ValidationError(f"Invalid regex pattern: {e}")
+        raise ValidationError(f"Failed to compile regex pattern: {e}")
 
 
 def validate_glob(pattern: str) -> bool:
@@ -544,6 +583,18 @@ def validate_glob(pattern: str) -> bool:
     """
     if not pattern:
         raise ValidationError("Glob pattern cannot be empty")
+
+    # Check length
+    if len(pattern) > Limits.MAX_PATH_LENGTH:
+        raise ValidationError(f"Glob pattern exceeds maximum length ({Limits.MAX_PATH_LENGTH})")
+
+    # Check for null bytes
+    if "\0" in pattern:
+        raise ValidationError("Invalid glob pattern: contains null bytes")
+
+    # Check for control characters
+    if any(ord(c) < 32 and c not in "\t\n\r" for c in pattern):
+        raise ValidationError("Invalid glob pattern: contains control characters")
 
     # Check for invalid glob characters in inappropriate positions
     if pattern.startswith("/") and "**" in pattern:
@@ -572,12 +623,12 @@ def validate_timeout(timeout: Union[int, float]) -> bool:
         ValidationError: If timeout is invalid
     """
     if not isinstance(timeout, (int, float)):
-        raise ValidationError(f"Timeout must be number, got {type(timeout)}")
+        raise ValidationError(f"Timeout must be numeric, got {type(timeout)}")
 
     if timeout <= 0:
         raise ValidationError(f"Timeout must be positive: {timeout}")
 
-    if timeout > Limits.DEFAULT_OPERATION_TIMEOUT * 10:  # Allow 10x default as max
-        raise ValidationError(f"Timeout too large: {timeout}")
+    if timeout > Limits.MAX_TIMEOUT:
+        raise ValidationError(f"Timeout exceeds maximum ({Limits.MAX_TIMEOUT} seconds): {timeout}")
 
     return True

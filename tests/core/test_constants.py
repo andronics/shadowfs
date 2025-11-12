@@ -191,7 +191,7 @@ class TestLimits:
 
     def test_specific_limit_values(self):
         """Test specific limit values."""
-        assert Limits.MAX_FILE_SIZE == 1024 * 1024 * 1024
+        assert Limits.MAX_FILE_SIZE == 2 * 1024 * 1024 * 1024
         assert Limits.MAX_TRANSFORM_OUTPUT == 100 * 1024 * 1024
         assert Limits.MAX_PATH_LENGTH == 4096
         assert Limits.MAX_FILENAME_LENGTH == 255
