@@ -208,7 +208,12 @@ class TestFileInfo:
     def test_fileinfo_real_path_is_absolute(self, temp_dir):
         """Test FileInfo.real_path is always absolute, even if input is relative."""
         # Change to temp dir
-        original_cwd = os.getcwd()
+        try:
+            original_cwd = os.getcwd()
+        except FileNotFoundError:
+            # Current directory doesn't exist, use temp_dir as starting point
+            original_cwd = str(temp_dir)
+
         try:
             os.chdir(temp_dir)
             test_file = Path("relative.txt")
@@ -221,7 +226,11 @@ class TestFileInfo:
             assert os.path.isabs(info.real_path)
             assert info.real_path.endswith("relative.txt")
         finally:
-            os.chdir(original_cwd)
+            try:
+                os.chdir(original_cwd)
+            except (FileNotFoundError, OSError):
+                # Original cwd no longer exists, stay in temp_dir
+                pass
 
     def test_fileinfo_mode_preserves_permissions(self, temp_dir):
         """Test FileInfo preserves file permissions in mode."""

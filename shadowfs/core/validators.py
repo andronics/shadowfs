@@ -554,7 +554,7 @@ def validate_permissions(mode: Union[int, str]) -> bool:
     return True
 
 
-def validate_regex(pattern: str) -> Pattern:
+def validate_regex(pattern: str) -> Pattern[str]:
     """Validate and compile a regex pattern.
 
     Args:

@@ -102,8 +102,6 @@ class CompressionTransform(Transform):
             # Compress any file (can be limited by patterns if needed)
             return True
 
-        return False
-
     def transform(
         self, content: bytes, path: str, metadata: Optional[Dict[str, Any]] = None
     ) -> bytes:
@@ -148,7 +146,8 @@ class CompressionTransform(Transform):
         elif self._algorithm == CompressionAlgorithm.LZMA:
             return lzma.compress(content)
 
-        raise TransformError(f"Unknown algorithm: {self._algorithm}", self.name)
+        # Defensive: All enum values covered above, but keep for future-proofing
+        raise TransformError(f"Unknown algorithm: {self._algorithm}", self.name)  # pragma: no cover
 
     def _decompress(self, content: bytes) -> bytes:
         """Decompress content.
@@ -166,7 +165,8 @@ class CompressionTransform(Transform):
         elif self._algorithm == CompressionAlgorithm.LZMA:
             return lzma.decompress(content)
 
-        raise TransformError(f"Unknown algorithm: {self._algorithm}", self.name)
+        # Defensive: All enum values covered above, but keep for future-proofing
+        raise TransformError(f"Unknown algorithm: {self._algorithm}", self.name)  # pragma: no cover
 
     def get_metadata(
         self, path: str, metadata: Optional[Dict[str, Any]] = None
