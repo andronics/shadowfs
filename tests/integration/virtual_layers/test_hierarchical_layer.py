@@ -1340,3 +1340,39 @@ class TestComplexHierarchies:
         # This triggers the `if categories:` check (line 116)
         assert layer.index == {}  # No files indexed
         assert layer.list_directory("") == []
+
+    def test_empty_categories_after_for_loop_completion(self):
+        """Test branch when for loop completes but categories is empty."""
+
+        def dummy_classifier(f):
+            return "cat"
+
+        layer = HierarchicalLayer("layer", [dummy_classifier])
+
+        # Create file list
+        files = [
+            FileInfo(
+                name="test.txt",
+                path="test.txt",
+                real_path="/test.txt",
+                extension=".txt",
+                size=100,
+                mtime=1.0,
+                ctime=1.0,
+                atime=1.0,
+                mode=stat.S_IFREG | 0o644,
+            )
+        ]
+
+        # Bypass the __init__ validation by directly setting classifiers to empty
+        # This forces the for-else block to execute with empty categories
+        layer.classifiers = []
+        layer.build_index(files)
+
+        # With empty classifiers, the for loop completes immediately
+        # categories = [] (empty)
+        # The else clause executes
+        # `if categories:` on line 116 is False
+        # We skip _add_to_index and continue to next file (branch 116->100)
+        assert layer.index == {}  # No files indexed because categories was empty
+        assert layer.list_directory("") == []

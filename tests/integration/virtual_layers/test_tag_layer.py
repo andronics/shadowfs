@@ -996,3 +996,40 @@ class TestTagLayerEdgeCases:
         # After stripping: ["[invalid", "json", "syntax"]
         assert "json" in tags
         assert "syntax" in tags
+
+    def test_sidecar_json_parses_but_not_list(self, tmp_path, monkeypatch):
+        """Test sidecar when JSON parses successfully but isn't a list."""
+        src = tmp_path / "source"
+        src.mkdir()
+
+        file_path = src / "test.txt"
+        file_path.write_text("content")
+
+        # Create sidecar file with content starting with "["
+        sidecar_path = src / "test.txt.tags"
+        sidecar_path.write_text('[tag1, tag2, tag3')  # Will be parsed as comma-separated
+
+        # Mock json.loads to return a dict instead of a list
+        # This tests the branch where isinstance(tags, list) is False (line 233->239)
+        import json
+
+        original_loads = json.loads
+
+        def mock_loads(s):
+            if s.startswith("["):
+                # Return a dict instead of a list to trigger the False branch
+                return {"not": "a list"}
+            return original_loads(s)
+
+        monkeypatch.setattr(json, "loads", mock_loads)
+
+        extractor = BuiltinExtractors.sidecar(".tags")
+        file_info = FileInfo.from_path(str(file_path), str(src))
+
+        tags = extractor(file_info)
+
+        # Should fall back to comma-separated parsing since isinstance(tags, list) is False
+        # Content: "[tag1, tag2, tag3"
+        # Split by comma and strip: ["[tag1", "tag2", "tag3"]
+        assert "tag2" in tags
+        assert "tag3" in tags
