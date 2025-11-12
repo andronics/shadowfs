@@ -520,7 +520,11 @@ class CacheManager:
 
         parts = path.rsplit("/", 1)
         if len(parts) == 2:
-            return parts[0] or "/"
+            parent = parts[0] or "/"
+            # Strip trailing slashes unless it's root
+            if parent != "/" and parent.endswith("/"):
+                parent = parent.rstrip("/")
+            return parent
         return None
 
 

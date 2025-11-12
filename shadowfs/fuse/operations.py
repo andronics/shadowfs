@@ -128,8 +128,8 @@ class ShadowFS(Operations):
         Returns:
             Real filesystem path if found and allowed, None otherwise
         """
-        # Normalize path
-        virtual_path = os.path.normpath(virtual_path)
+        # Normalize path and strip leading slash for layer manager
+        virtual_path = os.path.normpath(virtual_path).lstrip("/")
 
         # Check cache first
         cached = self.cache.get("path", virtual_path)
@@ -325,17 +325,13 @@ class ShadowFS(Operations):
 
         # Check if this is a virtual layer directory
         try:
-            virtual_entries = self.layer_manager.list_directory(path)
+            # Strip leading slash for layer manager (it expects paths without leading /)
+            virtual_path = path.lstrip("/")
+            virtual_entries = self.layer_manager.list_directory(virtual_path)
             if virtual_entries:
-                # Filter entries through rule engine
-                filtered = []
-                for entry in virtual_entries:
-                    entry_path = os.path.join(path, entry)
-                    real_path = self._resolve_path(entry_path)
-                    if real_path and self.rule_engine.should_show(real_path):
-                        filtered.append(entry)
-
-                result = entries + filtered
+                # Virtual layer entries don't need rule engine filtering
+                # (they're virtual directories or files already in the layer)
+                result = entries + virtual_entries
                 self.cache.set("readdir", path, result, level=CacheLevel.L1)
                 return result
         except Exception as e:

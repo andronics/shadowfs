@@ -275,7 +275,6 @@ class TestTransformPipelineIntegration:
 
         assert content == b"CONTENT1"
 
-    @pytest.mark.skip(reason="Transform filtering behavior needs investigation")
     def test_transform_not_applied_to_non_matching_files(
         self, fuse_ops, transform_pipeline, cache_manager, temp_dirs
     ):
@@ -301,7 +300,7 @@ class TestTransformPipelineIntegration:
                 """Transform content to uppercase."""
                 return content.upper()
 
-            def should_apply(self, path: str) -> bool:
+            def supports(self, path: str, metadata: dict = None) -> bool:
                 return path.endswith(".txt")
 
         transform_pipeline.add_transform(UppercaseTransform())
@@ -360,19 +359,24 @@ class TestCacheIntegration:
 class TestVirtualLayerIntegration:
     """Test virtual layer integration."""
 
-    @pytest.mark.skip(reason="Virtual layer readdir integration not yet complete")
     def test_classifier_layer_organizes_by_extension(self, fuse_ops, layer_manager):
         """Classifier layer organizes files by extension."""
+        # Verify fuse_ops uses same layer_manager
+        assert fuse_ops.layer_manager is layer_manager
+
         # Create by-type layer
         layer = ClassifierLayer(
             name="by-type",
-            classifier=lambda f: Path(f).suffix.lstrip(".") or "no-extension",
+            classifier=lambda file_info: Path(file_info.path).suffix.lstrip(".") or "no-extension",
         )
         layer_manager.add_layer(layer)
 
         # Scan sources
         layer_manager.scan_sources()
         layer_manager.rebuild_indexes()
+
+        # Debug: Check if layer has files
+        assert len(layer.index) > 0, f"Layer index is empty. Files in manager: {len(layer_manager.files)}"
 
         # List virtual directory
         entries = list(fuse_ops.readdir("/by-type", None))
@@ -382,13 +386,12 @@ class TestVirtualLayerIntegration:
         assert "py" in entries
         assert "md" in entries
 
-    @pytest.mark.skip(reason="Virtual layer path resolution integration not yet complete")
     def test_virtual_path_resolves_to_real_file(self, fuse_ops, layer_manager, temp_dirs):
         """Virtual path resolves to real file."""
         # Create by-type layer
         layer = ClassifierLayer(
             name="by-type",
-            classifier=lambda f: Path(f).suffix.lstrip(".") or "no-extension",
+            classifier=lambda file_info: Path(file_info.path).suffix.lstrip(".") or "no-extension",
         )
         layer_manager.add_layer(layer)
         layer_manager.scan_sources()

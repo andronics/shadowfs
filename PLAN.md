@@ -2258,17 +2258,1835 @@ class TestCompatibility:
 
 ### Objective
 
-Performance optimization, security hardening, and deployment automation.
+Transform ShadowFS from a functional filesystem into a production-grade, enterprise-ready system through comprehensive performance optimization, security hardening, complete documentation, and automated deployment capabilities.
+
+### Timeline
+
+**Duration**: 18 working days (~3.5 weeks)
+**Start Date**: 2025-11-12
+**Target Completion**: 2025-12-06
+
+### Success Metrics
+
+| Metric | Target | Measurement Method |
+|--------|--------|-------------------|
+| Test Coverage | 100% | pytest-cov |
+| Total Tests | 394+ (264 existing + 130 new) | pytest count |
+| Performance Overhead | <5% | Benchmark suite |
+| Cached Read Latency | <1ms | pytest-benchmark |
+| Uncached Read Latency | <10ms | pytest-benchmark |
+| Index Build (10K files) | <10s | pytest-benchmark |
+| Security Vulnerabilities | 0 HIGH/CRITICAL | bandit, safety |
+| API Documentation | 100% | Sphinx coverage check |
+| User Documentation | Complete | Manual review |
+| Docker Build | Success | CI/CD pipeline |
+| Package Build (deb/rpm) | Success | CI/CD pipeline |
+| Platform Compatibility | Linux + macOS | Test matrix |
+
+---
+
+## Phase 6A: Foundation & Gap Resolution (Days 1-3)
+
+### Objective
+
+Establish solid foundation for Phase 6 by resolving critical gaps, fixing failing tests, and documenting the complete Phase 6 plan.
+
+### Prerequisites Discovery
+
+Analysis revealed critical gaps requiring resolution before Phase 6 execution:
+- **Coverage Discrepancy**: Actual 22.16% vs. reported 97% (investigation needed)
+- **Failing Test**: 1 test in `test_cache_manager_additional.py`
+- **Skipped Tests**: 3 integration tests deferred from Phase 5
+- **Documentation Gap**: Phase 6 was placeholder-only in PLAN.md
+
+### Tasks
+
+#### Task 6A.1: Update PLAN.md ✅
+**Status**: COMPLETE
+**Files**: `PLAN.md` (lines 2257-2550+)
+**Actions**:
+- Replace placeholder with comprehensive Phase 6 specification
+- Document all 6 sub-phases (6A-6F) with detailed tasks
+- Add success metrics, acceptance criteria, timeline
+- Update directory structure references (fuse/ vs application/)
+- Add test count targets (394+ total tests)
+
+#### Task 6A.2: Fix Failing Test
+**Status**: PENDING
+**Files**:
+- `tests/core/test_cache_manager_additional.py` (test expectations)
+- `shadowfs/core/cache.py` (_get_parent_path method - if bug exists)
+
+**Issue**:
+```python
+# Test expects:
+assert manager._get_parent_path("//dir//file.txt") == "//dir"
+
+# Actual result:
+"//dir/"  # Extra trailing slash
+```
+
+**Root Cause Analysis Needed**:
+- Is this a path normalization bug in cache.py?
+- Or incorrect test expectation?
+- Should `//dir//file.txt` → `//dir` or `//dir/`?
+
+**Actions**:
+1. Read test_cache_manager_additional.py::test_get_parent_path_edge_cases
+2. Read shadowfs/core/cache.py::_get_parent_path implementation
+3. Determine correct behavior per POSIX path standards
+4. Fix bug if in implementation, or update test if expectation wrong
+5. Verify all edge cases work correctly
+
+**Acceptance Criteria**:
+- [ ] Test passes
+- [ ] Path normalization consistent with POSIX
+- [ ] Edge cases documented
+
+#### Task 6A.3: Complete Skipped Integration Tests
+**Status**: PENDING
+**Files**:
+- `tests/integration/test_virtual_layers.py` (2 skipped tests)
+- `tests/integration/test_transform_pipeline.py` (1 skipped test)
+
+**Skipped Tests**:
+1. Virtual layer readdir integration test #1
+2. Virtual layer readdir integration test #2
+3. Transform pipeline integration test
+
+**Actions**:
+1. Identify skip reasons (grep for @pytest.mark.skip)
+2. Implement test logic
+3. Verify integration works end-to-end
+4. Remove skip decorators
+
+**Acceptance Criteria**:
+- [ ] All 3 tests implemented and passing
+- [ ] Integration verified with real FUSE operations
+- [ ] No skipped tests remaining in integration suite
+
+#### Task 6A.4: Investigate Coverage Discrepancy
+**Status**: PENDING
+**Issue**: Coverage shows 22.16% but Phase 5 reported 97%
+
+**Hypothesis**:
+1. **LOC Mismatch**: Reported LOC in PLAN.md (fuse_operations.py: 946) doesn't match actual (operations.py: 340)
+2. **Directory Restructure**: Code moved from `application/` to `fuse/` and root
+3. **Coverage Configuration**: May not be running all test files
+4. **New Code Added**: Recent CLI improvements and mount helper added uncovered code
+
+**Actions**:
+1. Run full coverage: `pytest --cov=shadowfs --cov-report=html --cov-report=term`
+2. Review htmlcov/index.html to see which modules have low coverage
+3. Identify untested code paths (check htmlcov/<module>.html)
+4. Create test plan to reach 100% coverage
+5. Update PLAN.md with actual vs. reported LOC reconciliation
+
+**Coverage Analysis Required**:
+- shadowfs/fuse/operations.py: 11.11% (need 88.89% more)
+- shadowfs/fuse/control.py: 11.89% (need 88.11% more)
+- shadowfs/cli.py: Likely low after recent additions
+- shadowfs/main.py: 14.29% (need 85.71% more)
+- shadowfs/layers/*: 8-15% range (need significant testing)
+
+**Deliverable**: `docs/coverage-analysis.md` documenting:
+- Current coverage by module
+- Untested code paths
+- Test plan to achieve 100%
+- Estimated effort
+
+**Acceptance Criteria**:
+- [ ] Coverage baseline established
+- [ ] Gap analysis complete
+- [ ] Test plan documented
+- [ ] Effort estimated
 
 ### Deliverables
 
-- Performance optimization (<5% overhead)
-- Security audit and fixes
-- Complete documentation
-- Docker containers
-- Systemd service files
+- [x] Updated PLAN.md with complete Phase 6 specification (COMPLETE)
+- [ ] All tests passing (0 failures)
+- [ ] Coverage baseline and gap analysis document
+- [ ] Test plan to achieve 100% coverage
 
-*[Detailed implementation continues...]*
+### Acceptance Criteria
+
+- [x] Phase 6 fully documented in PLAN.md (COMPLETE)
+- [ ] Zero failing tests
+- [ ] All integration tests enabled (no skips)
+- [ ] Coverage discrepancy explained and gap plan created
+- [ ] Ready to proceed with Phase 6B
+
+---
+
+## Phase 6B: Performance Optimization (Days 4-6)
+
+### Objective
+
+Establish performance baseline, identify bottlenecks, optimize hot paths, and validate <5% overhead target.
+
+### Tasks
+
+#### Task 6B.1: Implement Benchmark Suite
+**Status**: PENDING
+**Files**: `tests/performance/test_benchmarks.py` (~400 LOC)
+
+**Benchmarks to Implement** (20+ tests):
+
+**Read Operations**:
+- `test_benchmark_cached_read_small_file` (<1ms target, 1KB file)
+- `test_benchmark_cached_read_large_file` (<1ms target, 1MB file)
+- `test_benchmark_uncached_read_small_file` (<10ms target, 1KB file)
+- `test_benchmark_uncached_read_large_file` (<50ms target, 1MB file)
+- `test_benchmark_sequential_read_throughput` (MB/s measurement)
+- `test_benchmark_random_read_iops` (IOPS measurement)
+
+**Directory Operations**:
+- `test_benchmark_readdir_small_directory` (<5ms, 10 files)
+- `test_benchmark_readdir_medium_directory` (<50ms, 1000 files)
+- `test_benchmark_readdir_large_directory` (<500ms, 10000 files)
+- `test_benchmark_stat_cached` (<0.5ms target)
+- `test_benchmark_stat_uncached` (<5ms target)
+
+**Virtual Layer Operations**:
+- `test_benchmark_virtual_layer_resolution` (<2ms target)
+- `test_benchmark_index_build_small` (<1s for 100 files)
+- `test_benchmark_index_build_medium` (<5s for 1000 files)
+- `test_benchmark_index_build_large` (<10s for 10000 files)
+- `test_benchmark_layer_path_lookup` (<1ms target)
+
+**Transform Operations**:
+- `test_benchmark_transform_overhead_passthrough` (<1% target)
+- `test_benchmark_transform_compression` (<5% target for text)
+- `test_benchmark_transform_template_simple` (<5ms target)
+- `test_benchmark_transform_chain_3_transforms` (<15ms target)
+
+**Cache Operations**:
+- `test_benchmark_cache_hit_rate` (>95% target for repeated access)
+- `test_benchmark_cache_lookup` (<0.1ms target)
+- `test_benchmark_cache_eviction` (LRU performance test)
+
+**Dependencies**: pytest-benchmark
+**Installation**: Add to requirements-dev.txt
+
+**Acceptance Criteria**:
+- [ ] 20+ benchmarks implemented
+- [ ] All benchmarks have clear targets
+- [ ] Benchmarks use pytest-benchmark fixtures
+- [ ] Baseline metrics captured
+
+#### Task 6B.2: Profile Application
+**Status**: PENDING
+**Files**: `tests/performance/test_profiling.py` (~200 LOC)
+
+**Profiling Tools**:
+- cProfile (Python standard library)
+- py-spy (sampling profiler)
+- memory_profiler (memory usage)
+- pytest-profiling plugin
+
+**Profile Scenarios**:
+1. **Hot Path Identification**:
+   - Profile 10,000 file reads
+   - Profile 1,000 virtual layer resolutions
+   - Profile 100 directory listings
+   - Profile transform pipeline execution
+
+2. **Memory Profiling**:
+   - Cache memory usage under load
+   - Index memory growth over time
+   - Memory leaks check (repeated operations)
+
+3. **CPU Profiling**:
+   - Identify CPU-intensive functions
+   - Find unnecessary computations
+   - Detect N+1 query patterns
+
+**Deliverables**:
+- Flame graphs (CPU usage visualization)
+- Call graphs (function call relationships)
+- Memory growth charts
+- Profiling report: `docs/performance-profiling-results.md`
+
+**Acceptance Criteria**:
+- [ ] All scenarios profiled
+- [ ] Hot paths identified (top 10 functions by time)
+- [ ] Memory growth characterized
+- [ ] Profiling report generated
+
+#### Task 6B.3: Optimize Hot Paths
+**Status**: PENDING
+**Files**: Based on profiling results (likely cache.py, operations.py, manager.py)
+
+**Expected Optimizations**:
+
+**Cache Optimizations**:
+- Tune cache sizes (L1: 10K→20K entries, L2: 512MB→1GB)
+- Optimize cache key generation (avoid redundant string operations)
+- Implement cache warming for predictable access patterns
+- Add cache statistics tracking
+
+**Index Optimizations**:
+- Use more efficient data structures (dict→OrderedDict for LRU)
+- Implement incremental index updates
+- Add index compression for large datasets
+- Optimize path resolution algorithm
+
+**I/O Optimizations**:
+- Implement connection pooling for file handles
+- Add async I/O for non-blocking reads
+- Batch directory listing operations
+- Optimize stat calls (reduce redundant lstat)
+
+**Code Optimizations**:
+- Remove unnecessary string copies
+- Optimize path normalization (compile regex once)
+- Cache compiled patterns in rule engine
+- Use __slots__ for frequently instantiated classes
+
+**Acceptance Criteria**:
+- [ ] Hot paths optimized (20%+ improvement)
+- [ ] Benchmark targets met (<1ms cached, <10ms uncached)
+- [ ] No performance regressions
+- [ ] Code changes documented
+
+#### Task 6B.4: Performance Documentation
+**Status**: PENDING
+**Files**: `docs/performance-tuning.md` (~800 LOC)
+
+**Sections**:
+1. **Performance Characteristics**
+   - Benchmark results table
+   - Comparison with native filesystem
+   - Overhead analysis
+
+2. **Tuning Parameters**
+   - Cache configuration
+   - Index optimization
+   - Transform settings
+   - FUSE mount options
+
+3. **Best Practices**
+   - When to use virtual layers
+   - When to use transforms
+   - Cache sizing guidelines
+   - Production configuration examples
+
+4. **Troubleshooting**
+   - Slow read operations
+   - High memory usage
+   - Cache thrashing
+   - Index build performance
+
+**Acceptance Criteria**:
+- [ ] Documentation complete
+- [ ] All tuning parameters documented
+- [ ] Troubleshooting guide tested
+- [ ] Examples validated
+
+### Deliverables
+
+- Benchmark suite (20+ tests, all passing)
+- Profiling reports and flame graphs
+- Optimized code (hot paths improved 20%+)
+- Performance tuning documentation
+
+### Acceptance Criteria
+
+- [ ] All benchmark targets met
+- [ ] <5% performance overhead validated
+- [ ] <1ms cached read latency
+- [ ] <10ms uncached read latency
+- [ ] <10s index build for 10K files
+- [ ] Performance documentation complete
+- [ ] No performance regressions
+
+---
+
+## Phase 6C: Security Hardening (Days 7-9)
+
+### Objective
+
+Identify and eliminate security vulnerabilities, implement comprehensive security testing, and validate security controls.
+
+### Tasks
+
+#### Task 6C.1: Implement Security Test Suite
+**Status**: PENDING
+**Files**: `tests/security/` directory (~400 LOC across 5 files)
+
+**test_path_traversal.py** (10 tests):
+- `test_prevent_parent_directory_escape` (`../../../etc/passwd`)
+- `test_prevent_absolute_path_access` (`/etc/passwd`)
+- `test_prevent_symlink_to_outside_source` (symlink → `/etc`)
+- `test_prevent_double_dot_in_middle` (`foo/../../etc/passwd`)
+- `test_prevent_url_encoded_traversal` (`%2e%2e%2f`)
+- `test_prevent_unicode_traversal` (`\u002e\u002e\u002f`)
+- `test_allow_legitimate_subdirectories` (`subdir/file.txt` ✓)
+- `test_handle_current_directory_refs` (`./file.txt` ✓)
+- `test_normalize_multiple_slashes` (`///path///to///file` → `/path/to/file`)
+- `test_reject_null_bytes_in_paths` (`file\x00.txt`)
+
+**test_symlink_security.py** (8 tests):
+- `test_prevent_symlink_escape_to_root`
+- `test_prevent_symlink_chain_escape`
+- `test_follow_symlinks_within_source`
+- `test_limit_symlink_depth` (max 10 levels)
+- `test_detect_symlink_loops`
+- `test_handle_broken_symlinks`
+- `test_prevent_time_of_check_time_of_use_race`
+- `test_resolve_relative_symlinks_safely`
+
+**test_permissions.py** (6 tests):
+- `test_respect_file_permissions` (755 file accessible, 600 not)
+- `test_respect_directory_permissions`
+- `test_enforce_readonly_mount` (writes rejected)
+- `test_preserve_uid_gid` (ownership correct)
+- `test_umask_application` (new files respect umask)
+- `test_prevent_privilege_escalation`
+
+**test_transform_sandbox.py** (6 tests):
+- `test_transform_no_filesystem_access`
+- `test_transform_no_network_access`
+- `test_transform_cpu_limit` (timeout after 30s)
+- `test_transform_memory_limit` (max 100MB)
+- `test_transform_no_subprocess_spawn`
+- `test_transform_exception_isolation` (errors don't crash)
+
+**test_input_validation.py** (10 tests):
+- `test_reject_invalid_utf8_filenames`
+- `test_handle_very_long_paths` (4096 character limit)
+- `test_handle_very_long_filenames` (255 character limit)
+- `test_reject_control_characters_in_names`
+- `test_validate_config_file_schema`
+- `test_reject_malicious_yaml_config`
+- `test_validate_rule_patterns` (invalid regex rejected)
+- `test_validate_layer_configurations`
+- `test_sanitize_log_output` (no injection)
+- `test_validate_cache_limits` (positive values only)
+
+**Acceptance Criteria**:
+- [ ] 40+ security tests implemented
+- [ ] All tests passing
+- [ ] Security scenarios comprehensive (OWASP Top 10 coverage)
+
+#### Task 6C.2: Run Security Audit
+**Status**: PENDING
+**Tools**: bandit (security linter), safety (dependency checker)
+
+**Bandit Scan**:
+```bash
+bandit -r shadowfs/ -f json -o bandit-report.json
+bandit -r shadowfs/ -ll  # Show only HIGH severity
+```
+
+**Safety Check**:
+```bash
+safety check --json > safety-report.json
+safety check --full-report
+```
+
+**Manual Review Checklist**:
+- [ ] Path traversal prevention in operations.py
+- [ ] Symlink handling in path_utils.py
+- [ ] Permission checks in file_ops.py
+- [ ] Input validation in validators.py
+- [ ] Config file parsing (YAML injection)
+- [ ] Transform execution (code injection)
+- [ ] Error messages (information disclosure)
+- [ ] Logging (sensitive data exposure)
+
+**OWASP Top 10 Check**:
+- [x] A01: Broken Access Control → Path traversal tests
+- [x] A02: Cryptographic Failures → N/A (no crypto in core)
+- [x] A03: Injection → Config validation, transform sandboxing
+- [x] A04: Insecure Design → Architecture review
+- [x] A05: Security Misconfiguration → Default config review
+- [x] A06: Vulnerable Components → Safety check
+- [x] A07: Authentication Failures → N/A (filesystem-level auth)
+- [x] A08: Software/Data Integrity → Validation tests
+- [x] A09: Logging Failures → Audit logging test
+- [x] A10: SSRF → N/A (no outbound requests)
+
+**Acceptance Criteria**:
+- [ ] Bandit: 0 HIGH severity, <5 MEDIUM severity
+- [ ] Safety: 0 vulnerable dependencies
+- [ ] Manual review complete
+- [ ] All findings documented
+
+#### Task 6C.3: Fix Security Vulnerabilities
+**Status**: PENDING
+**Files**: Based on audit results
+
+**Expected Fixes**:
+1. Add path normalization in operations.py
+2. Strengthen symlink validation in path_utils.py
+3. Add resource limits to transform execution
+4. Sanitize error messages (remove internal paths)
+5. Add rate limiting to control API
+6. Implement secure default configuration
+
+**Acceptance Criteria**:
+- [ ] All HIGH/CRITICAL findings fixed
+- [ ] Security tests passing
+- [ ] Changes peer-reviewed
+- [ ] No regressions introduced
+
+#### Task 6C.4: Security Documentation
+**Status**: PENDING
+**Files**: `docs/security-architecture.md` (~1500 LOC)
+
+**Sections**:
+1. **Threat Model**
+   - Attack surface analysis
+   - Trust boundaries
+   - Threat actors
+   - Attack scenarios
+
+2. **Security Controls**
+   - Path traversal prevention
+   - Permission enforcement
+   - Transform sandboxing
+   - Resource limits
+   - Input validation
+
+3. **Security Best Practices**
+   - Secure configuration
+   - Principle of least privilege
+   - Defense in depth
+   - Secure deployment
+
+4. **Incident Response**
+   - Security monitoring
+   - Log analysis
+   - Incident handling
+   - Vulnerability reporting
+
+5. **Compliance**
+   - GDPR considerations
+   - HIPAA considerations
+   - PCI-DSS considerations
+   - SOC 2 alignment
+
+**Acceptance Criteria**:
+- [ ] Documentation complete
+- [ ] Threat model comprehensive
+- [ ] Best practices validated
+- [ ] Compliance mapped
+
+### Deliverables
+
+- Security test suite (40+ tests, all passing)
+- Security audit reports (bandit, safety)
+- Fixed vulnerabilities (0 HIGH/CRITICAL)
+- Security architecture documentation
+
+### Acceptance Criteria
+
+- [ ] 40+ security tests passing
+- [ ] 0 HIGH/CRITICAL vulnerabilities
+- [ ] <5 MEDIUM vulnerabilities
+- [ ] Security documentation complete
+- [ ] Manual security review passed
+- [ ] OWASP Top 10 coverage validated
+
+---
+
+## Phase 6D: Complete Documentation (Days 10-12)
+
+### Objective
+
+Create comprehensive, production-quality documentation covering API reference, user guides, developer guides, and deployment procedures.
+
+### Tasks
+
+#### Task 6D.1: API Documentation (Sphinx)
+**Status**: PENDING
+**Files**: `docs/source/` directory structure
+
+**Sphinx Setup**:
+```
+docs/
+└── source/
+    ├── conf.py              # Sphinx configuration
+    ├── index.rst            # Documentation home
+    ├── api/
+    │   ├── core.rst         # Core modules
+    │   ├── layers.rst       # Virtual layers
+    │   ├── rules.rst        # Rules and patterns
+    │   ├── transforms.rst   # Transform pipeline
+    │   └── fuse.rst         # FUSE operations
+    ├── _static/             # CSS, images
+    └── _templates/          # Custom templates
+```
+
+**API Sections**:
+- Core (constants, cache, config, logging, metrics, path_utils, validators, file_ops)
+- Layers (base, classifier, date, tag, hierarchical, manager, factory)
+- Rules (engine, patterns, actions)
+- Transforms (base, pipeline, compression, templates, format conversion)
+- FUSE (operations, control server)
+- CLI (main, argument parsing)
+
+**Actions**:
+1. Install Sphinx: `pip install sphinx sphinx-rtd-theme`
+2. Configure autodoc for automatic API extraction
+3. Write module documentation (docstrings)
+4. Generate HTML: `sphinx-build -b html docs/source docs/build`
+5. Configure Read the Docs integration
+
+**Acceptance Criteria**:
+- [ ] Sphinx builds without errors
+- [ ] 100% of public APIs documented
+- [ ] Code examples for each module
+- [ ] Cross-references working
+- [ ] Search functionality working
+
+#### Task 6D.2: User Guide
+**Status**: PENDING
+**Files**: `docs/user-guide.md` (~2000 LOC)
+
+**Table of Contents**:
+
+**1. Introduction** (100 LOC)
+- What is ShadowFS?
+- Use cases and benefits
+- Architecture overview
+- Getting started
+
+**2. Installation** (300 LOC)
+- System requirements
+- Dependency installation (FUSE, Python packages)
+- Installation methods (pip, Docker, packages)
+- Post-install configuration
+- Verification steps
+
+**3. Basic Usage** (400 LOC)
+- Mounting a filesystem (CLI commands)
+- Unmounting
+- fstab integration
+- Basic configuration file
+- Common mount options
+
+**4. Configuration Reference** (600 LOC)
+- Configuration file format (YAML)
+- Configuration hierarchy
+- Source directories
+- Virtual layers (classifier, date, tag, hierarchical)
+- Rules (include, exclude, transform)
+- Transforms (compression, templates, format conversion)
+- Cache settings
+- Logging configuration
+- Metrics configuration
+
+**5. Virtual Layers** (300 LOC)
+- Concepts and use cases
+- Classifier layers (by extension, size, MIME, pattern)
+- Date layers (by mtime, ctime, atime)
+- Tag layers (xattr, sidecar files, patterns)
+- Hierarchical layers
+- Layer composition
+
+**6. Rules and Transforms** (200 LOC)
+- Rule syntax and patterns
+- Include/exclude rules
+- Transform rules
+- Transform types
+- Transform chaining
+- Example configurations
+
+**7. Advanced Topics** (100 LOC)
+- Performance tuning
+- Security considerations
+- Multi-source configurations
+- Read-write mode
+- HTTP control API
+
+**8. Troubleshooting** (200 LOC)
+- Common errors and solutions
+- Debugging techniques
+- Log analysis
+- Performance issues
+- Known limitations
+
+**9. FAQ** (100 LOC)
+- General questions
+- Performance questions
+- Security questions
+- Configuration questions
+
+**Acceptance Criteria**:
+- [ ] All sections complete
+- [ ] Examples tested and working
+- [ ] Screenshots/diagrams included
+- [ ] Cross-references correct
+- [ ] FAQ comprehensive
+
+#### Task 6D.3: Developer Guide
+**Status**: PENDING
+**Files**: `docs/developer-guide.md` (~1500 LOC)
+
+**Table of Contents**:
+
+**1. Architecture Overview** (300 LOC)
+- System architecture diagram
+- Layer architecture (core, layers, rules, transforms, fuse)
+- Component interactions
+- Data flow diagrams
+- Design principles
+
+**2. Development Setup** (200 LOC)
+- Clone repository
+- Virtual environment setup
+- Install dependencies
+- Pre-commit hooks
+- IDE configuration (VS Code, PyCharm)
+
+**3. Project Structure** (200 LOC)
+- Directory layout
+- Module organization
+- Test organization
+- Documentation structure
+- Configuration files
+
+**4. Testing Guidelines** (300 LOC)
+- Test structure (unit, integration, performance, security)
+- Running tests (`pytest`)
+- Writing new tests
+- Test fixtures
+- Mocking strategies
+- Coverage requirements (100%)
+
+**5. Code Style** (200 LOC)
+- PEP 8 compliance
+- Type hints
+- Docstring format (Google style)
+- Import organization
+- Naming conventions
+- Pre-commit checks (black, isort, flake8, mypy)
+
+**6. Contributing** (200 LOC)
+- How to contribute
+- Branch naming
+- Commit message format
+- Pull request process
+- Code review guidelines
+- CI/CD pipeline
+
+**7. Release Process** (150 LOC)
+- Versioning (semantic versioning)
+- CHANGELOG maintenance
+- Tag creation
+- Package building
+- PyPI publishing
+- Docker image publishing
+
+**8. Extending ShadowFS** (250 LOC)
+- Adding new transforms
+- Adding new layer types
+- Adding new rules
+- Plugin architecture (future)
+- Example extension walkthrough
+
+**Acceptance Criteria**:
+- [ ] All sections complete
+- [ ] Code examples validated
+- [ ] Diagrams clear and accurate
+- [ ] Links working
+- [ ] Contribution workflow tested
+
+#### Task 6D.4: Deployment Guide
+**Status**: PENDING
+**Files**: `docs/deployment-guide.md` (~1000 LOC)
+
+**Table of Contents**:
+
+**1. Production Deployment Overview** (100 LOC)
+- Deployment options
+- Architecture considerations
+- Scalability planning
+- High availability
+
+**2. Systemd Service** (250 LOC)
+- Service file creation
+- Multi-instance setup (shadowfs@.service)
+- Socket activation
+- Auto-restart configuration
+- Log management (journald)
+- Service monitoring
+- Example configurations
+
+**3. Docker Deployment** (300 LOC)
+- Docker image usage
+- Docker Compose setup
+- Volume mounting
+- Environment configuration
+- Health checks
+- Container orchestration (Kubernetes, Docker Swarm)
+- Example deployments
+
+**4. Package Installation** (150 LOC)
+- deb packages (Debian/Ubuntu)
+- rpm packages (RHEL/Fedora/CentOS)
+- PyPI installation
+- Installation script
+- Dependency management
+- Upgrade procedures
+
+**5. Configuration Management** (150 LOC)
+- Configuration file locations
+- Environment-specific configs
+- Secrets management
+- Configuration validation
+- Hot-reload procedures
+
+**6. Monitoring and Logging** (200 LOC)
+- Logging configuration
+- Log rotation
+- Centralized logging (syslog, journald)
+- Metrics collection (Prometheus)
+- Alerting (Alertmanager)
+- Monitoring dashboards (Grafana)
+
+**7. Backup and Recovery** (100 LOC)
+- What to backup
+- Backup procedures
+- Recovery procedures
+- Disaster recovery planning
+
+**8. Production Best Practices** (150 LOC)
+- Security hardening
+- Performance tuning
+- Resource limits
+- High availability
+- Load balancing
+- Operational runbooks
+
+**Acceptance Criteria**:
+- [ ] All sections complete
+- [ ] Deployment examples tested
+- [ ] Configuration examples validated
+- [ ] Monitoring setup documented
+- [ ] Best practices comprehensive
+
+### Deliverables
+
+- Sphinx API documentation (100% coverage, hosted on Read the Docs)
+- User guide (2000+ LOC, complete with examples)
+- Developer guide (1500+ LOC, complete with diagrams)
+- Deployment guide (1000+ LOC, complete with examples)
+
+### Acceptance Criteria
+
+- [ ] Sphinx builds without errors
+- [ ] 100% of public APIs documented
+- [ ] User guide complete and validated
+- [ ] Developer guide complete and validated
+- [ ] Deployment guide complete and tested
+- [ ] Documentation hosted and accessible
+- [ ] All examples working
+- [ ] All links valid
+
+---
+
+## Phase 6E: Deployment Automation (Days 13-15)
+
+### Objective
+
+Automate deployment through Docker containers, systemd services, package building, and installation scripts.
+
+### Tasks
+
+#### Task 6E.1: Docker Implementation
+**Status**: PENDING
+**Files**: `Dockerfile`, `docker-compose.yml`, `.dockerignore`, `docker/entrypoint.sh`
+
+**Dockerfile** (~100 LOC):
+```dockerfile
+# Multi-stage build for minimal image size
+FROM python:3.11-alpine AS builder
+WORKDIR /build
+RUN apk add --no-cache fuse fuse-dev gcc musl-dev
+COPY requirements.txt .
+RUN pip install --user --no-cache-dir -r requirements.txt
+COPY . .
+RUN python setup.py bdist_wheel
+
+FROM python:3.11-alpine
+RUN apk add --no-cache fuse
+COPY --from=builder /root/.local /root/.local
+COPY --from=builder /build/dist/*.whl /tmp/
+RUN pip install --no-cache-dir /tmp/*.whl && rm /tmp/*.whl
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["--help"]
+```
+
+**docker-compose.yml** (~80 LOC):
+```yaml
+version: '3.8'
+services:
+  shadowfs:
+    image: shadowfs:latest
+    container_name: shadowfs
+    privileged: true  # Required for FUSE
+    devices:
+      - /dev/fuse:/dev/fuse
+    cap_add:
+      - SYS_ADMIN
+    volumes:
+      - /data/source:/source:ro
+      - shadowfs-mount:/mnt/shadowfs:rshared
+    environment:
+      - SHADOWFS_CONFIG=/etc/shadowfs/config.yaml
+      - SHADOWFS_LOG_LEVEL=INFO
+    command: ["/source", "/mnt/shadowfs", "-o", "allow_other"]
+    healthcheck:
+      test: ["CMD", "mountpoint", "-q", "/mnt/shadowfs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  shadowfs-mount:
+    driver: local
+```
+
+**entrypoint.sh** (~50 LOC):
+```bash
+#!/bin/sh
+set -e
+
+# Ensure /dev/fuse exists
+if [ ! -c /dev/fuse ]; then
+    echo "Error: /dev/fuse not available. Run with --privileged" >&2
+    exit 1
+fi
+
+# Load FUSE module
+modprobe fuse 2>/dev/null || true
+
+# Allow other users if requested
+if grep -q "allow_other" <<< "$@"; then
+    echo "user_allow_other" >> /etc/fuse.conf
+fi
+
+# Execute shadowfs
+exec shadowfs "$@"
+```
+
+**Actions**:
+1. Create Dockerfile with multi-stage build
+2. Create docker-compose.yml for easy deployment
+3. Create .dockerignore for efficient builds
+4. Create entrypoint.sh for container initialization
+5. Build image: `docker build -t shadowfs:latest .`
+6. Test locally: `docker-compose up`
+7. Add to CI/CD: `.github/workflows/docker.yml`
+8. Publish to Docker Hub
+
+**Acceptance Criteria**:
+- [ ] Docker image builds successfully (<100MB)
+- [ ] Docker Compose deployment works
+- [ ] Health checks functional
+- [ ] FUSE operations work in container
+- [ ] CI/CD builds and pushes image
+
+#### Task 6E.2: Systemd Service
+**Status**: PENDING
+**Files**: `systemd/shadowfs.service`, `systemd/shadowfs@.service`, `systemd/install.sh`
+
+**shadowfs.service** (~50 LOC):
+```ini
+[Unit]
+Description=ShadowFS FUSE Filesystem
+Documentation=https://shadowfs.readthedocs.io
+After=network.target
+Requires=fuse.service
+
+[Service]
+Type=forking
+ExecStart=/usr/local/bin/shadowfs /data/source /mnt/shadowfs -o allow_other
+ExecStop=/bin/fusermount -u /mnt/shadowfs
+Restart=on-failure
+RestartSec=10
+User=shadowfs
+Group=shadowfs
+Environment="SHADOWFS_CONFIG=/etc/shadowfs/config.yaml"
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+```
+
+**shadowfs@.service** (template for multiple instances) (~60 LOC):
+```ini
+[Unit]
+Description=ShadowFS FUSE Filesystem (%i)
+Documentation=https://shadowfs.readthedocs.io
+After=network.target
+Requires=fuse.service
+
+[Service]
+Type=forking
+ExecStart=/usr/local/bin/shadowfs -c /etc/shadowfs/%i.yaml
+ExecStop=/bin/fusermount -u /mnt/shadowfs/%i
+Restart=on-failure
+RestartSec=10
+User=shadowfs
+Group=shadowfs
+Environment="SHADOWFS_CONFIG=/etc/shadowfs/%i.yaml"
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+```
+
+**install.sh** (~100 LOC):
+```bash
+#!/bin/bash
+set -e
+
+# Check for root
+if [ "$EUID" -ne 0 ]; then
+    echo "Please run as root" >&2
+    exit 1
+fi
+
+# Install service files
+cp systemd/shadowfs.service /etc/systemd/system/
+cp systemd/shadowfs@.service /etc/systemd/system/
+systemctl daemon-reload
+
+# Create user/group
+useradd -r -s /bin/false shadowfs || true
+
+# Create directories
+mkdir -p /etc/shadowfs /var/log/shadowfs
+chown shadowfs:shadowfs /var/log/shadowfs
+
+# Enable service (but don't start)
+systemctl enable shadowfs.service
+
+echo "✓ ShadowFS systemd service installed"
+echo "  Configure: /etc/shadowfs/config.yaml"
+echo "  Start: systemctl start shadowfs"
+echo "  Status: systemctl status shadowfs"
+```
+
+**Acceptance Criteria**:
+- [ ] Service files created
+- [ ] Installation script works
+- [ ] Service starts and stops correctly
+- [ ] Auto-restart on failure works
+- [ ] Logs to journald
+- [ ] Multi-instance support tested
+
+#### Task 6E.3: Package Building
+**Status**: PENDING
+**Files**: `debian/` directory, `rpm/` directory, CI/CD workflows
+
+**Debian Package** (`debian/` directory):
+```
+debian/
+├── changelog          # Package changelog
+├── compat             # Debhelper compatibility level
+├── control            # Package metadata
+├── copyright          # License information
+├── rules              # Build rules
+├── shadowfs.install   # Installation manifest
+├── shadowfs.postinst  # Post-install script
+└── shadowfs.prerm     # Pre-removal script
+```
+
+**RPM Package** (`rpm/shadowfs.spec` ~200 LOC):
+```spec
+Name:           shadowfs
+Version:        1.0.0
+Release:        1%{?dist}
+Summary:        Dynamic Filesystem Transformation Layer
+License:        MIT
+URL:            https://github.com/andronics/shadowfs
+Source0:        %{name}-%{version}.tar.gz
+BuildArch:      noarch
+Requires:       python3 >= 3.11, fuse
+
+%description
+ShadowFS is a FUSE-based filesystem that provides dynamic filtering,
+transformation, and virtual organizational views over existing filesystems.
+
+%prep
+%autosetup
+
+%build
+%py3_build
+
+%install
+%py3_install
+
+%files
+%license LICENSE
+%doc README.md CHANGELOG.md
+%{python3_sitelib}/%{name}
+%{python3_sitelib}/%{name}-*.egg-info
+%{_bindir}/shadowfs
+%{_bindir}/mount.shadowfs
+%config(noreplace) %{_sysconfdir}/shadowfs/config.yaml
+
+%changelog
+* Tue Dec 06 2025 Stephen Cox <user@example.com> - 1.0.0-1
+- Initial release
+```
+
+**CI/CD Workflow** (`.github/workflows/package.yml` ~150 LOC):
+```yaml
+name: Build Packages
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-deb:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build deb package
+        run: |
+          sudo apt-get install -y devscripts debhelper
+          debuild -us -uc -b
+      - name: Upload deb artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: debian-package
+          path: ../shadowfs_*.deb
+
+  build-rpm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build rpm package
+        run: |
+          sudo yum install -y rpm-build
+          rpmbuild -ba rpm/shadowfs.spec
+      - name: Upload rpm artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: rpm-package
+          path: ~/rpmbuild/RPMS/noarch/shadowfs-*.rpm
+```
+
+**PyPI Publishing** (`.github/workflows/pypi.yml` ~100 LOC):
+```yaml
+name: Publish to PyPI
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          pip install build twine
+      - name: Build package
+        run: python -m build
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+        run: twine upload dist/*
+```
+
+**Acceptance Criteria**:
+- [ ] deb package builds successfully
+- [ ] rpm package builds successfully
+- [ ] PyPI publishing workflow works
+- [ ] Packages install cleanly
+- [ ] CI/CD automates builds
+
+#### Task 6E.4: Installation Scripts
+**Status**: PENDING
+**Files**: `scripts/install.sh`, `scripts/uninstall.sh`, `scripts/config-wizard.sh`
+
+**install.sh** (~200 LOC):
+```bash
+#!/bin/bash
+# One-command installation script
+
+set -e
+
+# Detect OS
+if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    OS=$ID
+else
+    echo "Unable to detect OS" >&2
+    exit 1
+fi
+
+# Install dependencies
+case "$OS" in
+    ubuntu|debian)
+        sudo apt-get update
+        sudo apt-get install -y python3 python3-pip fuse
+        ;;
+    fedora|rhel|centos)
+        sudo yum install -y python3 python3-pip fuse
+        ;;
+    arch)
+        sudo pacman -S python python-pip fuse
+        ;;
+    *)
+        echo "Unsupported OS: $OS" >&2
+        exit 1
+        ;;
+esac
+
+# Install ShadowFS
+pip3 install --user shadowfs
+
+# Install mount helper
+sudo ln -sf ~/.local/bin/mount.shadowfs /sbin/mount.shadowfs
+
+# Create config directory
+mkdir -p ~/.config/shadowfs
+
+echo "✓ ShadowFS installed successfully"
+echo "  Run: shadowfs --help"
+```
+
+**uninstall.sh** (~100 LOC):
+```bash
+#!/bin/bash
+# Clean uninstallation
+
+set -e
+
+# Remove Python package
+pip3 uninstall -y shadowfs
+
+# Remove mount helper
+sudo rm -f /sbin/mount.shadowfs /usr/sbin/mount.shadowfs
+
+# Remove systemd services (if present)
+if systemctl list-units --full -all | grep -q shadowfs; then
+    sudo systemctl stop shadowfs || true
+    sudo systemctl disable shadowfs || true
+    sudo rm -f /etc/systemd/system/shadowfs*.service
+    sudo systemctl daemon-reload
+fi
+
+# Remove user config (optional)
+read -p "Remove user config (~/.config/shadowfs)? [y/N] " response
+if [[ "$response" =~ ^[Yy]$ ]]; then
+    rm -rf ~/.config/shadowfs
+fi
+
+echo "✓ ShadowFS uninstalled"
+```
+
+**config-wizard.sh** (~150 LOC):
+```bash
+#!/bin/bash
+# Interactive configuration wizard
+
+echo "=== ShadowFS Configuration Wizard ==="
+echo
+
+# Prompt for source directory
+read -p "Enter source directory path: " SOURCE_DIR
+if [ ! -d "$SOURCE_DIR" ]; then
+    echo "Error: Directory does not exist" >&2
+    exit 1
+fi
+
+# Prompt for mount point
+read -p "Enter mount point path: " MOUNT_POINT
+if [ ! -d "$MOUNT_POINT" ]; then
+    echo "Mount point does not exist. Create it? [Y/n] " response
+    if [[ ! "$response" =~ ^[Nn]$ ]]; then
+        mkdir -p "$MOUNT_POINT"
+    fi
+fi
+
+# Prompt for virtual layers
+echo
+echo "Enable virtual layers?"
+read -p "  By file type (extension)? [Y/n] " enable_type
+read -p "  By date (modification time)? [Y/n] " enable_date
+read -p "  By size? [y/N] " enable_size
+
+# Generate config
+CONFIG_FILE=~/.config/shadowfs/config.yaml
+mkdir -p ~/.config/shadowfs
+
+cat > "$CONFIG_FILE" <<EOF
+shadowfs:
+  version: "1.0"
+
+  sources:
+    - path: $SOURCE_DIR
+      priority: 1
+
+  virtual_layers:
+EOF
+
+if [[ ! "$enable_type" =~ ^[Nn]$ ]]; then
+    cat >> "$CONFIG_FILE" <<EOF
+    - name: by-type
+      type: classifier
+      classifier: extension
+EOF
+fi
+
+if [[ ! "$enable_date" =~ ^[Nn]$ ]]; then
+    cat >> "$CONFIG_FILE" <<EOF
+    - name: by-date
+      type: date
+      date_field: mtime
+EOF
+fi
+
+if [[ "$enable_size" =~ ^[Yy]$ ]]; then
+    cat >> "$CONFIG_FILE" <<EOF
+    - name: by-size
+      type: classifier
+      classifier: size
+EOF
+fi
+
+echo
+echo "✓ Configuration saved to: $CONFIG_FILE"
+echo
+echo "To mount:"
+echo "  shadowfs $SOURCE_DIR $MOUNT_POINT"
+```
+
+**Acceptance Criteria**:
+- [ ] Installation script works on major distros
+- [ ] Uninstallation cleans up completely
+- [ ] Config wizard generates valid YAML
+- [ ] Scripts tested on clean systems
+
+### Deliverables
+
+- Docker image (<100MB, published to Docker Hub)
+- Docker Compose configuration
+- Systemd service files (single + multi-instance)
+- Package builds (deb, rpm, PyPI)
+- Installation scripts (install, uninstall, config wizard)
+- CI/CD workflows for automated builds
+
+### Acceptance Criteria
+
+- [ ] Docker image builds and runs
+- [ ] Systemd service installs and works
+- [ ] deb/rpm packages install cleanly
+- [ ] PyPI package published
+- [ ] Installation script tested on 3+ distros
+- [ ] CI/CD automates all packaging
+
+---
+
+## Phase 6F: Final Testing & Polish (Days 16-18)
+
+### Objective
+
+Comprehensive final testing across platforms, load scenarios, and stress conditions. Polish all rough edges for v1.0.0 release.
+
+### Tasks
+
+#### Task 6F.1: Compatibility Testing
+**Status**: PENDING
+**Files**: `tests/compatibility/` (~300 LOC)
+
+**test_linux.py** (10 tests):
+- `test_ubuntu_2204_compatibility`
+- `test_ubuntu_2404_compatibility`
+- `test_fedora_39_compatibility`
+- `test_debian_12_compatibility`
+- `test_arch_linux_compatibility`
+- `test_rhel_9_compatibility`
+- `test_opensuse_compatibility`
+- `test_kernel_5_15_compatibility`
+- `test_kernel_6_1_compatibility`
+- `test_kernel_6_5_compatibility`
+
+**test_macos.py** (10 tests):
+- `test_macos_monterey_compatibility`
+- `test_macos_ventura_compatibility`
+- `test_macos_sonoma_compatibility`
+- `test_osxfuse_compatibility`
+- `test_macfuse_compatibility`
+- `test_apple_silicon_compatibility`
+- `test_intel_mac_compatibility`
+- `test_case_insensitive_fs_macos`
+- `test_spotlight_indexing_macos`
+- `test_time_machine_exclusion_macos`
+
+**test_unicode.py** (8 tests):
+- `test_utf8_filenames`
+- `test_emoji_in_filenames` (🎉.txt)
+- `test_chinese_characters` (文件.txt)
+- `test_arabic_characters` (ملف.txt)
+- `test_mixed_scripts` (file文件.txt)
+- `test_right_to_left_text`
+- `test_combining_characters`
+- `test_zero_width_characters`
+
+**test_large_files.py** (5 tests):
+- `test_read_4gb_file`
+- `test_read_10gb_file`
+- `test_sparse_file_handling`
+- `test_large_file_transform` (compress 1GB file)
+- `test_large_file_cache_eviction`
+
+**Acceptance Criteria**:
+- [ ] All Linux tests pass (Ubuntu, Fedora, Debian, Arch)
+- [ ] All macOS tests pass (Monterey, Ventura, Sonoma)
+- [ ] Unicode handling works correctly
+- [ ] Large files (>4GB) supported
+
+#### Task 6F.2: Load Testing
+**Status**: PENDING
+**Files**: `tests/load/` (~200 LOC)
+
+**test_concurrent_access.py** (8 tests):
+- `test_10_concurrent_readers`
+- `test_100_concurrent_readers`
+- `test_1000_concurrent_readers` (stress)
+- `test_concurrent_read_write` (read-write mode)
+- `test_concurrent_directory_listings`
+- `test_concurrent_stat_calls`
+- `test_concurrent_transform_operations`
+- `test_thundering_herd_scenario`
+
+**test_large_datasets.py** (6 tests):
+- `test_1000_files_directory_listing`
+- `test_10000_files_directory_listing`
+- `test_100000_files_directory_listing` (stress)
+- `test_deep_directory_tree` (100 levels)
+- `test_wide_directory_tree` (10000 siblings)
+- `test_mixed_large_small_files`
+
+**test_resource_limits.py** (6 tests):
+- `test_memory_usage_under_load`
+- `test_file_descriptor_usage`
+- `test_thread_pool_usage`
+- `test_cache_memory_limit_enforcement`
+- `test_graceful_degradation_low_memory`
+- `test_resource_cleanup_on_unmount`
+
+**Tools**: pytest-xdist (parallel execution), locust (load generation)
+
+**Acceptance Criteria**:
+- [ ] 100+ concurrent clients supported
+- [ ] 10K+ file directories handled
+- [ ] Memory usage stays below limits
+- [ ] No resource leaks detected
+
+#### Task 6F.3: Stress Testing
+**Status**: PENDING
+**Files**: `tests/stress/` (~200 LOC)
+
+**test_file_handles.py** (5 tests):
+- `test_max_open_files` (system ulimit)
+- `test_file_handle_exhaustion_recovery`
+- `test_file_handle_leak_detection`
+- `test_long_lived_file_handles` (24 hours)
+- `test_rapid_open_close_cycles`
+
+**test_cache_pressure.py** (5 tests):
+- `test_cache_thrashing` (access pattern exceeds cache)
+- `test_cache_eviction_under_pressure`
+- `test_cache_hit_rate_degradation`
+- `test_cache_recovery_after_pressure`
+- `test_zero_cache_mode` (cache disabled)
+
+**test_edge_cases.py** (8 tests):
+- `test_disk_full_scenario`
+- `test_source_directory_deleted`
+- `test_source_directory_unmounted`
+- `test_network_filesystem_source` (NFS, SMB)
+- `test_network_interruption_handling`
+- `test_system_shutdown_during_operation`
+- `test_sigterm_graceful_shutdown`
+- `test_sigkill_recovery`
+
+**Acceptance Criteria**:
+- [ ] System limits respected
+- [ ] Graceful degradation under pressure
+- [ ] Edge cases handled correctly
+- [ ] No crashes or data corruption
+
+#### Task 6F.4: Integration Validation
+**Status**: PENDING
+**Actions**:
+1. Re-run all 394+ tests
+2. Verify 100% coverage maintained
+3. Manual end-to-end testing
+4. Performance regression testing
+5. Security regression testing
+6. Documentation review
+7. Code cleanup (dead code, TODOs)
+
+**Manual Test Scenarios**:
+- [ ] Install from PyPI
+- [ ] Install from deb package
+- [ ] Install from Docker
+- [ ] Mount with various configurations
+- [ ] Test all virtual layer types
+- [ ] Test all transform types
+- [ ] Test rule engine
+- [ ] Test HTTP control API
+- [ ] Test fstab integration
+- [ ] Test systemd service
+- [ ] Unmount cleanly
+
+**Acceptance Criteria**:
+- [ ] All 394+ tests passing
+- [ ] 100% coverage maintained
+- [ ] Manual testing complete
+- [ ] No regressions
+- [ ] Code cleaned up
+
+#### Task 6F.5: Release Preparation
+**Status**: PENDING
+**Files**: `CHANGELOG.md`, `setup.py`, Git tags
+
+**Version Bump**: 0.x.x → 1.0.0
+
+**CHANGELOG.md**:
+```markdown
+# Changelog
+
+## [1.0.0] - 2025-12-06
+
+### Added
+
+**Phase 6: Production Readiness**
+
+#### Performance (Phase 6B)
+- Benchmark suite with 20+ performance tests
+- Profiling and optimization of hot paths
+- <5% performance overhead achieved
+- <1ms cached read latency
+- <10ms uncached read latency
+- Performance tuning documentation
+
+#### Security (Phase 6C)
+- Security test suite with 40+ tests
+- Path traversal prevention
+- Symlink escape prevention
+- Transform sandboxing
+- Resource limit enforcement
+- Zero HIGH/CRITICAL vulnerabilities
+- Security architecture documentation
+
+#### Documentation (Phase 6D)
+- Complete API documentation (Sphinx, hosted on Read the Docs)
+- Comprehensive user guide (2000+ LOC)
+- Developer guide with architecture diagrams
+- Deployment guide with production examples
+
+#### Deployment (Phase 6E)
+- Docker container (<100MB Alpine-based image)
+- Docker Compose configuration
+- Systemd service files (single + multi-instance)
+- Package builds (deb, rpm, PyPI)
+- Installation scripts
+- CI/CD automation for packaging
+
+#### Testing (Phase 6F)
+- Compatibility tests (Linux + macOS)
+- Load tests (100+ concurrent clients)
+- Stress tests (edge cases, resource limits)
+- 394+ total tests (264 existing + 130 new)
+- 100% test coverage
+
+### Changed
+- Optimized cache hit ratios
+- Improved index build performance
+- Enhanced error messages
+- Streamlined deployment process
+
+### Fixed
+- Path normalization edge case (//dir//file.txt)
+- Resource leaks under load
+- Memory usage optimization
+- Security vulnerabilities addressed
+
+## [0.x.x] - Previous releases
+...
+```
+
+**setup.py Updates**:
+- Version: 1.0.0
+- Classifiers: Development Status :: 5 - Production/Stable
+- Long description: Full feature list
+
+**Git Tagging**:
+```bash
+git tag -a v1.0.0 -m "ShadowFS v1.0.0 - Production Release"
+git push origin v1.0.0
+```
+
+**Release Notes** (`docs/releases/v1.0.0.md`):
+```markdown
+# ShadowFS v1.0.0 - Production Release
+
+We're thrilled to announce ShadowFS v1.0.0, the first production-ready
+release of our dynamic filesystem transformation layer!
+
+## Highlights
+
+🚀 **Production-Ready Performance**
+- <5% overhead compared to native filesystem
+- <1ms cached read latency
+- <10ms uncached read latency
+- Handles 10,000+ file directories
+
+🔒 **Enterprise-Grade Security**
+- Zero HIGH/CRITICAL vulnerabilities
+- Comprehensive security testing
+- Path traversal prevention
+- Transform sandboxing
+
+📚 **Complete Documentation**
+- Full API reference
+- User guide with examples
+- Developer guide
+- Deployment guide
+
+🐳 **Easy Deployment**
+- Docker container
+- Systemd service
+- deb/rpm packages
+- One-command installation
+
+## Installation
+
+pip install shadowfs
+
+## Quick Start
+
+shadowfs /data /mnt/shadowfs -o allow_other
+
+## Learn More
+
+- Documentation: https://shadowfs.readthedocs.io
+- GitHub: https://github.com/andronics/shadowfs
+- Docker Hub: https://hub.docker.com/r/shadowfs/shadowfs
+```
+
+**Actions**:
+1. Update CHANGELOG.md with v1.0.0 entry
+2. Bump version in setup.py to 1.0.0
+3. Update README.md with v1.0.0 features
+4. Create Git tag v1.0.0
+5. Push tag to trigger CI/CD
+6. Create GitHub release with release notes
+7. Announce on relevant forums/channels
+
+**Acceptance Criteria**:
+- [ ] Version bumped to 1.0.0
+- [ ] CHANGELOG.md updated
+- [ ] Git tag created and pushed
+- [ ] GitHub release published
+- [ ] PyPI package published
+- [ ] Docker image published
+- [ ] Release announced
+
+### Deliverables
+
+- 33+ compatibility tests (Linux + macOS + Unicode + large files)
+- 20+ load tests (concurrent access + large datasets + resources)
+- 18+ stress tests (file handles + cache pressure + edge cases)
+- Complete integration validation (394+ tests passing)
+- v1.0.0 release (tagged, packaged, published, documented)
+
+### Acceptance Criteria
+
+- [ ] All 394+ tests passing
+- [ ] 100% coverage maintained
+- [ ] Compatibility verified (Linux + macOS)
+- [ ] Load tests passing (100+ clients, 10K+ files)
+- [ ] Stress tests passing (edge cases handled)
+- [ ] Manual testing complete
+- [ ] No known critical bugs
+- [ ] v1.0.0 released and published
+- [ ] Documentation complete and hosted
+- [ ] Release announced
+
+---
+
+## Phase 6 Overall Deliverables
+
+### Code
+- 130+ new tests (performance, security, compatibility, load, stress)
+- Optimized hot paths (20%+ improvement)
+- Security fixes (0 HIGH/CRITICAL vulnerabilities)
+- 394+ total tests, all passing
+- 100% test coverage maintained
+
+### Documentation
+- Sphinx API documentation (100% coverage, hosted)
+- User guide (2000+ LOC)
+- Developer guide (1500+ LOC)
+- Deployment guide (1000+ LOC)
+- Performance tuning guide (800+ LOC)
+- Security architecture document (1500+ LOC)
+- Coverage analysis document
+- Profiling reports
+
+### Deployment Artifacts
+- Docker image (<100MB, on Docker Hub)
+- Docker Compose configuration
+- Systemd service files (2 variants)
+- deb package (Debian/Ubuntu)
+- rpm package (RHEL/Fedora)
+- PyPI package
+- Installation scripts (3 scripts)
+
+### Infrastructure
+- CI/CD workflows (Docker, packages, PyPI)
+- Benchmark suite (20+ benchmarks)
+- Security test suite (40+ tests)
+- Compatibility test suite (33+ tests)
+- Load test suite (20+ tests)
+- Stress test suite (18+ tests)
+
+### Release
+- v1.0.0 tagged and released
+- Published to PyPI
+- Published to Docker Hub
+- GitHub release with notes
+- Documentation hosted on Read the Docs
+
+---
+
+## Phase 6 Success Criteria
+
+✅ **ALL** of the following must be met:
+
+### Testing
+- [ ] 394+ tests passing (0 failures, 0 skipped)
+- [ ] 100% test coverage across all modules
+- [ ] All benchmark targets met
+- [ ] All security tests passing
+- [ ] Platform compatibility validated (Linux + macOS)
+
+### Performance
+- [ ] <5% performance overhead vs. native
+- [ ] <1ms cached read latency
+- [ ] <10ms uncached read latency
+- [ ] <10s index build for 10K files
+- [ ] 100+ concurrent clients supported
+
+### Security
+- [ ] 0 HIGH/CRITICAL vulnerabilities (bandit)
+- [ ] 0 vulnerable dependencies (safety)
+- [ ] 40+ security tests passing
+- [ ] Manual security review passed
+
+### Documentation
+- [ ] Sphinx API docs: 100% coverage, hosted
+- [ ] User guide: complete with examples
+- [ ] Developer guide: complete with diagrams
+- [ ] Deployment guide: complete with configs
+
+### Deployment
+- [ ] Docker image: builds, <100MB, published
+- [ ] Systemd service: installs and works
+- [ ] Packages: deb/rpm build and install
+- [ ] PyPI package: published
+- [ ] CI/CD: automates all packaging
+
+### Release
+- [ ] Version 1.0.0 tagged
+- [ ] CHANGELOG.md updated
+- [ ] GitHub release published
+- [ ] Documentation hosted
+- [ ] Release announced
+
+---
+
+## Risk Mitigation
+
+### Identified Risks
+
+1. **Coverage Discrepancy (22% vs. 97%)**
+   - **Mitigation**: Phase 6A addresses this immediately
+   - **Fallback**: Accept 95%+ with documented exclusions
+
+2. **Platform Compatibility Issues**
+   - **Mitigation**: Test on multiple platforms early
+   - **Fallback**: Document platform-specific limitations
+
+3. **Performance Regression During Optimization**
+   - **Mitigation**: Continuous benchmarking after each change
+   - **Fallback**: Revert problematic optimizations
+
+4. **Security Vulnerabilities Discovery**
+   - **Mitigation**: Early security audit in Phase 6C
+   - **Fallback**: Delay release until fixes complete
+
+5. **Documentation Scope Creep**
+   - **Mitigation**: Define clear scope in Task 6D.x
+   - **Fallback**: Prioritize user-facing docs, defer advanced topics
+
+6. **Package Building Complexity**
+   - **Mitigation**: Use standard tools (debuild, rpmbuild)
+   - **Fallback**: Focus on PyPI, defer deb/rpm to post-1.0
+
+7. **Timeline Overrun**
+   - **Mitigation**: Daily progress tracking, early issue detection
+   - **Fallback**: Cut non-critical features (e.g., rpm package)
+
+### Contingency Plans
+
+- **If timeline slips by >5 days**: Cut rpm packaging, focus on Docker + PyPI
+- **If coverage <95% by Day 6**: Accept 95% with documented exclusions
+- **If HIGH vulnerabilities found**: Delay release until fixed (security > schedule)
+- **If platform incompatibility**: Document as known limitation, fix in 1.0.1
+
+---
+
+## Post-Phase 6 Activities
+
+### Immediate (Week 15)
+- Monitor issue reports from early adopters
+- Address critical bugs in v1.0.1
+- Gather feedback on documentation
+- Monitor performance in production
+
+### Short-term (Weeks 16-20)
+- Address non-critical bugs
+- Improve documentation based on feedback
+- Add minor feature enhancements
+- Publish blog posts / tutorials
+
+### Long-term (Months 4-6)
+- Plan Phase 7: Middleware Extensions
+- Community building
+- Performance optimization v2
+- Additional platform support (Windows WSL?)
+
+---
+
+**Summary**: Phase 6 transforms ShadowFS from a functional filesystem into a production-grade, enterprise-ready system. With comprehensive testing (394+ tests), complete documentation (6500+ LOC), and automated deployment (Docker, systemd, packages), ShadowFS v1.0.0 will be ready for production use in demanding environments.
 
 ---
 
