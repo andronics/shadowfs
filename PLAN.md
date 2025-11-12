@@ -1969,18 +1969,179 @@ Implement rule engine and transform pipeline with plugin architecture.
 
 ## Phase 4: Integration - Virtual Layers (Weeks 8-9)
 
+**Status**: In Progress - Day 1 Started (2025-11-12)
+**Dependencies**: Phase 3 Complete ✅
+**Target**: 7 days implementation
+
 ### Objective
 
-Implement virtual layer system for multiple organizational views.
+Implement virtual layer system that creates multiple organizational views over the same files without duplication, enabling programmable directory structures (organize by type, date, tags, project) with zero storage overhead.
 
-### Deliverables
+### Scope
 
-- Virtual layer base classes
-- Layer types (classifier, tag, date, hierarchical)
-- Index building and caching
-- Path resolution system
+- **6 core modules** (~1,170 LOC)
+- **7 test suites** (~1,660 LOC, 280+ tests)
+- **Target coverage**: 92%+ average (matching Phase 3's 96%)
+- **Integration**: Phase 2 infrastructure + Phase 3 components
 
-*[Detailed implementation continues...]*
+### Implementation Schedule
+
+#### Day 1: Foundation - `base.py` 🔄 IN PROGRESS
+
+**Deliverables**:
+- [ ] `shadowfs/integration/virtual_layers/base.py` (~150 LOC)
+  - [ ] FileInfo dataclass (path, extension, size, timestamps)
+  - [ ] VirtualLayer abstract base class (ABC pattern)
+  - [ ] Core abstract methods: build_index(), resolve(), list_directory(), refresh()
+- [ ] `tests/integration/virtual_layers/test_base.py` (~50 tests)
+  - [ ] FileInfo creation and property extraction
+  - [ ] ABC contract enforcement
+  - [ ] Edge cases and validation
+
+**Target**: 95%+ test coverage
+
+#### Day 2: Classifier Layer - `classifier_layer.py`
+
+**Deliverables**:
+- [ ] ClassifierLayer with custom classifier functions
+- [ ] 5 built-in classifiers:
+  - [ ] Extension classifier (by-type/python/, by-type/javascript/)
+  - [ ] Size classifier with ranges (by-size/small/, by-size/large/)
+  - [ ] Pattern classifier (using Phase 3 PatternMatcher)
+  - [ ] MIME type detection classifier
+  - [ ] Git status classifier (untracked/modified/staged/committed)
+- [ ] Index building: category → [files] mapping
+- [ ] Path resolution: virtual → real path lookup
+- [ ] Tests: ~50 tests, 90%+ coverage
+
+#### Day 3: Date Layer - `date_layer.py`
+
+**Deliverables**:
+- [ ] DateLayer with 3-level hierarchy (YYYY/MM/DD)
+- [ ] Support for mtime, ctime, atime fields
+- [ ] Nested index structure: year → month → day → [files]
+- [ ] Path resolution through date hierarchy
+- [ ] Tests: ~40 tests, 90%+ coverage
+
+#### Day 4: Tag Layer - `tag_layer.py`
+
+**Deliverables**:
+- [ ] TagLayer with tag extraction
+- [ ] Multiple tag sources:
+  - [ ] Extended attributes (xattr)
+  - [ ] Sidecar files (.tags)
+  - [ ] Custom extractors
+- [ ] Multi-tag support (one file in multiple tag directories)
+- [ ] Index: tag → [files] mapping
+- [ ] Tests: ~45 tests, 90%+ coverage
+
+#### Day 5: Hierarchical Layer - `hierarchical_layer.py`
+
+**Deliverables**:
+- [ ] HierarchicalLayer with N-level nesting
+- [ ] List of classifier functions (one per level)
+- [ ] Nested index structure for arbitrary depth
+- [ ] Path resolution through multiple levels
+- [ ] Example: by-project/projectA/src/file.py (project → type → file)
+- [ ] Tests: ~50 tests, 90%+ coverage
+
+#### Day 6: Manager - `manager.py`
+
+**Deliverables**:
+- [ ] VirtualLayerManager central coordinator
+- [ ] Source directory scanning → FileInfo list
+- [ ] Layer registration and management
+- [ ] Index building for all layers
+- [ ] Path resolution routing (extract layer, delegate)
+- [ ] Directory listing (root lists layers, delegate otherwise)
+- [ ] Integration with Phase 2:
+  - [ ] CacheManager (cache paths and listings)
+  - [ ] Logger (structured logging for operations)
+  - [ ] ConfigManager (load layer definitions)
+- [ ] Tests: ~60 tests, 95%+ coverage
+
+#### Day 7: Integration & Documentation
+
+**Deliverables**:
+- [ ] End-to-end integration tests (~35 tests)
+  - [ ] Multiple layers active simultaneously
+  - [ ] Cross-layer interactions
+  - [ ] Real filesystem integration
+  - [ ] Performance benchmarks (1,000 and 10,000 files)
+- [ ] Documentation:
+  - [ ] Update PLAN.md with Phase 4 completion status
+  - [ ] Update CLAUDE.md with virtual layer usage examples
+  - [ ] Inline docstrings for all public APIs
+  - [ ] Config templates in `config/templates/`
+- [ ] Integration:
+  - [ ] Update `shadowfs/integration/__init__.py` exports
+  - [ ] Factory functions for layer creation from config
+  - [ ] Config schema for virtual layers
+
+### Code Deliverables
+
+- [ ] `shadowfs/integration/virtual_layers/base.py`
+- [ ] `shadowfs/integration/virtual_layers/classifier_layer.py`
+- [ ] `shadowfs/integration/virtual_layers/tag_layer.py`
+- [ ] `shadowfs/integration/virtual_layers/date_layer.py`
+- [ ] `shadowfs/integration/virtual_layers/hierarchical_layer.py`
+- [ ] `shadowfs/integration/virtual_layers/manager.py`
+- [ ] `shadowfs/integration/virtual_layers/__init__.py`
+
+### Test Deliverables
+
+- [ ] `tests/integration/virtual_layers/test_base.py`
+- [ ] `tests/integration/virtual_layers/test_classifier_layer.py`
+- [ ] `tests/integration/virtual_layers/test_tag_layer.py`
+- [ ] `tests/integration/virtual_layers/test_date_layer.py`
+- [ ] `tests/integration/virtual_layers/test_hierarchical_layer.py`
+- [ ] `tests/integration/virtual_layers/test_manager.py`
+- [ ] `tests/integration/virtual_layers/test_virtual_layers_integration.py`
+
+### Success Metrics
+
+| Metric | Target | Verification |
+|--------|--------|--------------|
+| Test Coverage | 92%+ avg | pytest --cov |
+| Path Resolution | 100% accuracy | Integration tests |
+| Index Build (1K files) | <1s | Performance tests |
+| Index Build (10K files) | <10s | Performance tests |
+| Memory (10K files) | <100MB | Memory profiling |
+| Documentation | All public APIs | Docstring coverage |
+
+### Integration Points
+
+**From Phase 2 (Infrastructure)**:
+- **CacheManager**: Cache resolved paths and directory listings
+- **Logger**: Structured logging for index rebuilds and operations
+- **ConfigManager**: Load virtual layer definitions from YAML config
+
+**From Phase 3 (Integration)**:
+- **PatternMatcher**: Use in pattern-based classifier (98.77% coverage ✅)
+- **RuleEngine**: Optional filtering before indexing (94.71% coverage ✅)
+
+### Risk Mitigation
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Performance (large file sets) | High | Incremental updates, background indexing, caching |
+| Memory exhaustion | High | Index size limits, lazy loading, compression |
+| Cache invalidation | Medium | Event-driven invalidation, TTL |
+| Concurrent access | Medium | Thread-safe index updates with RLock |
+| Path resolution edge cases | Medium | Comprehensive test coverage, fuzzing |
+
+### Completion Checklist
+
+- [ ] All 6 modules implemented and tested
+- [ ] 92%+ average test coverage achieved (280+ tests)
+- [ ] All built-in classifiers working (extension, size, pattern, MIME, git)
+- [ ] Path resolution 100% accurate
+- [ ] Performance targets met (<1s for 1K files, <10s for 10K files)
+- [ ] Integration with Phase 2 infrastructure complete
+- [ ] Documentation complete (all public APIs documented)
+- [ ] All pre-commit hooks passing
+- [ ] Phase marked complete in PLAN.md
+- [ ] Ready for Phase 5 (FUSE Application Layer)
 
 ---
 
